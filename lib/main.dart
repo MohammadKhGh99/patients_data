@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:patients_data/add_patient.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,16 +39,36 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // int _counter = 0;
-
-  // void _incrementCounter() {
-  //   setState(() {
-  //     _counter++;
-  //   });
-  // }
+  var selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
+    Widget page = MainMenuPage(
+      onButtonPressed: (int index) {
+        setState(() {
+          selectedIndex = index;
+        });
+      },
+    );
+    switch (selectedIndex) {
+      case 0:
+        page = MainMenuPage(
+          onButtonPressed: (int index) {
+            setState(() {
+              selectedIndex = index;
+            });
+          },
+        );
+      case 1:
+        page = AddPatientPage();
+      // case 2:
+      //   page = SearchPatientPage();
+      // case 3:
+      //   page = SearchResultsPage();
+      default:
+        throw UnimplementedError('no widget for $selectedIndex');
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -75,73 +96,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
               SizedBox(height: 150),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Add your onPressed logic here
-                  print('إضافة مريض جديد');
-                },
-                icon: const Icon(Icons.add, color: Colors.black),
-                label: const Text(
-                  'إضافة مريض جديد',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontFamily: 'ScheherazadeNew',
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Add your onPressed logic here
-                  print('ابحث عن مريض');
-                },
-                icon: const Icon(Icons.search, color: Colors.black),
-                label: const Text(
-                  'ابحث عن مريض',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontFamily: 'ScheherazadeNew',
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Add your onPressed logic here
-                  print('حفظ في جوجل درايف');
-                },
-                icon: const Icon(Icons.add_to_drive, color: Colors.green),
-                label: const Text(
-                  'حفظ في جوجل درايف',
-                  style: TextStyle(fontSize: 15, fontFamily: 'ScheherazadeNew'),
-                ),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Add your onPressed logic here
-                  print('استعادة من جوجل درايف');
-                },
-                icon: const Icon(Icons.restore, color: Colors.green),
-                label: const Text(
-                  'استعادة من جوجل درايف',
-                  style: TextStyle(fontSize: 15, fontFamily: 'ScheherazadeNew'),
-                ),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Add your onPressed logic here
-                  print('تحويل إلى ملف اكسل');
-                },
-                icon: const Icon(Icons.swap_horiz, color: Colors.green),
-                label: const Text(
-                  'تحويل إلى ملف اكسل',
-                  style: TextStyle(fontSize: 15, fontFamily: 'ScheherazadeNew'),
-                ),
-              ),
+              page,
             ],
           ),
         ),
@@ -150,56 +105,89 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class AddPatientPage extends StatefulWidget {
-  const AddPatientPage({super.key, required this.title});
-  final Text title;
+class MainMenuPage extends StatefulWidget {
+  final Function(int) onButtonPressed;
+
+  const MainMenuPage({super.key, required this.onButtonPressed});
 
   @override
-  State<AddPatientPage> createState() => _AddPatientPageState();
+  State<MainMenuPage> createState() => _MainMenuState();
 }
 
-class _AddPatientPageState extends State<AddPatientPage> {
-  // int _counter = 0;
-
-  // void _incrementCounter() {
-  //   setState(() {
-  //     _counter++;
-  //   });
-  // }
-
+class _MainMenuState extends State<MainMenuPage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Center(child: widget.title),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Column(
-            // mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Text(
-                'بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم',
+    return Expanded(
+      child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            ElevatedButton.icon(
+              onPressed: () {
+                print('إضافة مريض جديد');
+                widget.onButtonPressed(1);
+              },
+              icon: const Icon(Icons.add, color: Colors.black),
+              label: const Text(
+                'إضافة مريض جديد',
                 style: TextStyle(
-                  fontSize: 30,
-                  fontFamily: 'Traditional Arabic',
-                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  fontFamily: 'ScheherazadeNew',
+                  color: Colors.black,
                 ),
               ),
-              const Text(
-                'بطاقة علاج',
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: () {
+                print('ابحث عن مريض');
+                // widget.onButtonPressed(2);
+              },
+              icon: const Icon(Icons.search, color: Colors.black),
+              label: const Text(
+                'ابحث عن مريض',
                 style: TextStyle(
-                  fontSize: 25,
-                  fontFamily: 'Traditional Arabic',
+                  fontSize: 20,
+                  fontFamily: 'ScheherazadeNew',
+                  color: Colors.black,
                 ),
               ),
-              SizedBox(height: 150),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: () {
+                print('حفظ في جوجل درايف');
+              },
+              icon: const Icon(Icons.add_to_drive, color: Colors.green),
+              label: const Text(
+                'حفظ في جوجل درايف',
+                style: TextStyle(fontSize: 15, fontFamily: 'ScheherazadeNew'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: () {
+                print('استعادة من جوجل درايف');
+              },
+              icon: const Icon(Icons.restore, color: Colors.green),
+              label: const Text(
+                'استعادة من جوجل درايف',
+                style: TextStyle(fontSize: 15, fontFamily: 'ScheherazadeNew'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: () {
+                print('تحويل إلى ملف اكسل');
+              },
+              icon: const Icon(Icons.swap_horiz, color: Colors.green),
+              label: const Text(
+                'تحويل إلى ملف اكسل',
+                style: TextStyle(fontSize: 15, fontFamily: 'ScheherazadeNew'),
+              ),
+            ),
+          ],
         ),
-      ),
     );
   }
 }
