@@ -91,7 +91,13 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Center(child: widget.title),
+        title: Padding(
+          padding: EdgeInsets.only(
+            // right: MediaQuery.of(context).size.width * 0.1,
+            left: MediaQuery.of(context).size.width * 0.11,
+          ),
+          child: widget.title,
+        ),
         leading: IconButton(
           onPressed: () {
             print('Back button pressed');
@@ -105,7 +111,11 @@ class _MyHomePageState extends State<MyHomePage> {
               selectedIndex = indexesArray.isNotEmpty ? indexesArray.last : 0;
             });
           },
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(
+            Icons.arrow_circle_left_outlined,
+            color: Colors.white,
+            size: 40,
+          ),
         ),
       ),
       body: Center(
@@ -165,7 +175,7 @@ class _MainMenuState extends State<MainMenuPage> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          const SizedBox(height: 100),
+          const SizedBox(height: 80),
           ElevatedButton.icon(
             onPressed: () {
               print('إضافة مريض جديد');
@@ -175,7 +185,7 @@ class _MainMenuState extends State<MainMenuPage> {
             label: Text(
               'إضافة مريض جديد',
               style: GoogleFonts.scheherazadeNew(
-                fontSize: 20,
+                fontSize: 25,
                 color: Colors.black,
               ),
             ),
@@ -190,7 +200,7 @@ class _MainMenuState extends State<MainMenuPage> {
             label: Text(
               'ابحث عن مريض',
               style: GoogleFonts.scheherazadeNew(
-                fontSize: 20,
+                fontSize: 25,
                 color: Colors.black,
               ),
             ),
@@ -204,7 +214,7 @@ class _MainMenuState extends State<MainMenuPage> {
             label: Text(
               'حفظ في جوجل درايف',
               style: GoogleFonts.scheherazadeNew(
-                fontSize: 15,
+                fontSize: 20,
                 color: Colors.green,
               ),
             ),
@@ -218,8 +228,8 @@ class _MainMenuState extends State<MainMenuPage> {
             label: Text(
               'استعادة من جوجل درايف',
               style: GoogleFonts.scheherazadeNew(
-                fontSize: 15,
-                color: Colors.black,
+                fontSize: 20,
+                color: Colors.green,
               ),
             ),
           ),
@@ -232,8 +242,8 @@ class _MainMenuState extends State<MainMenuPage> {
             label: Text(
               'تحويل إلى ملف اكسل',
               style: GoogleFonts.scheherazadeNew(
-                fontSize: 15,
-                color: Colors.black,
+                fontSize: 20,
+                color: Colors.green,
               ),
             ),
           ),
