@@ -353,35 +353,6 @@ class _AddPatientPageState extends State<AddPatientPage> {
     );
   }
 
-  Widget _buildMultilineTextField(String labelName) {
-    return TextFormField(
-      focusNode: _descriptionFocusNode,
-      textInputAction: TextInputAction.next,
-      decoration: InputDecoration(
-        labelText: labelName,
-        labelStyle: GoogleFonts.notoNaskhArabic(
-          fontSize: 20,
-          color: Colors.grey,
-        ),
-        floatingLabelStyle: GoogleFonts.notoNaskhArabic(
-          fontSize: 20,
-          color: Colors.black,
-        ),
-        alignLabelWithHint: true,
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
-          borderSide: BorderSide(color: Colors.black, width: 2),
-        ),
-      ),
-      textAlign: TextAlign.right,
-      style: GoogleFonts.notoNaskhArabic(color: Colors.black, fontSize: 20),
-      maxLines: null,
-      keyboardType: TextInputType.multiline,
-      onTapOutside: (PointerEvent event) {
-        FocusScope.of(context).unfocus();
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {

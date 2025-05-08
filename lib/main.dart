@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:patients_data/add_patient.dart';
+import 'package:patients_data/search_patient.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
@@ -63,6 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
       print('selectedIndex: $selectedIndex');
     }
     print('indexesArray: $indexesArray');
+    
     switch (selectedIndex) {
       case 0:
         page = MainMenuPage(
@@ -80,8 +82,8 @@ class _MyHomePageState extends State<MyHomePage> {
             });
           },
         );
-      // case 2:
-      //   page = SearchPatientPage();
+      case 2:
+        page = SearchPatientPage();
       // case 3:
       //   page = SearchResultsPage();
       default:
@@ -194,7 +196,7 @@ class _MainMenuState extends State<MainMenuPage> {
           ElevatedButton.icon(
             onPressed: () {
               print('ابحث عن مريض');
-              // widget.onButtonPressed(2);
+              widget.onButtonPressed(2);
             },
             icon: const Icon(Icons.search, color: Colors.black),
             label: Text(
