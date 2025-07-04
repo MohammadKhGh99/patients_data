@@ -13,11 +13,7 @@ class DatabaseHelper {
 
   static Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'patients.db');
-    return await openDatabase(
-      path, 
-      version: 1, 
-      onCreate: _createDatabase
-      );
+    return await openDatabase(path, version: 1, onCreate: _createDatabase);
   }
 
   static Future<void> _createDatabase(Database db, int version) async {
@@ -49,14 +45,25 @@ class DatabaseHelper {
 
   // Insert patient function
   static Future<void> insertPatient(Patient patient) async {
-    final db = await database;
-    await db.insert(
-      'patients',
-      patient.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
-    // Close the database after insertion
-    db.close();
+    try {
+      final db = await database;
+
+      // Insert the patient
+      await db.insert(
+        'patients',
+        patient.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace, // Changed from ignore
+      );
+
+      print('Patient inserted successfully');
+
+      // Get count after insertion (await instead of then)
+      final patients = await getAllPatients();
+      print('Total patients: $patients');
+    } catch (e) {
+      print('Error inserting patient: $e');
+      rethrow;
+    }
   }
 
   // Get all patients
@@ -82,158 +89,120 @@ class DatabaseHelper {
     );
   }
 
-  static Future<Patient?> getPatient(
-    String? firstName,
-    String? firstMiddleName,
-    String? firstLastName,
-    String? lastName,
-    String? fullName,
-    String? id,
+  static Future<List<Patient?>?> getPatients(
+    String searchMethod,
+    String? value,
   ) async {
-
-
-    // if (firstName != null) {
-    //   return _getPatientByFirstName(firstName);
-    // } else if (firstMiddleName != null) {
-    //   return _getPatientByFirstMiddleName(firstMiddleName);
-    // } else if (firstLastName != null) {
-    //   return _getPatientByFirstLastName(firstLastName);
-    // } else if (lastName != null) {
-    //   return _getPatientByLastName(lastName);
-    // } else if (fullName != null) {
-    //   return _getPatientByFullName(fullName);
-    // } else if (id != null) {
-    //   return _getPatientById(id);
-    // } else {
-    //   return null;
-    // }
-
-
-    // Query the table for a specific patient.
-    final lookups = <String, dynamic>{
-      'firstName': firstName,
-      'firstMiddleName': firstMiddleName,
-      'firstLastName': firstLastName,
-      'lastName': lastName,
-      'fullName': fullName,
-      'id': id,
-    };
-
-    final functions = <String, Future<Patient?> Function(dynamic)>{
-      'firstName': (value) => _getPatientByFirstName(value as String),
-      'firstMiddleName': (value) => _getPatientByFirstMiddleName(value as String),
-      'firstLastName': (value) => _getPatientByFirstLastName(value as String),
-      'lastName': (value) => _getPatientByLastName(value as String),
-      'fullName': (value) => _getPatientByFullName(value as String),
-      'id': (value) => _getPatientById(value as String),
-    };
-
-    for (final entry in lookups.entries) {
-      if (entry.value != null) {
-        return await functions[entry.key]!(entry.value);
-      }
+    List<Patient?>? patients = [];
+    if (searchMethod == 'الإسم الشخصي' && value != null) {
+      patients = await _getPatientsByFirstName(value);
+    } else if (searchMethod == 'الإسم الشخصي واسم الأب' && value != null) {
+      patients = await _getPatientsByFirstMiddleName(value);
+    } else if (searchMethod == 'الإسم الشخصي واسم العائلة' && value != null) {
+      patients = await _getPatientsByFirstLastName(value);
+    } else if (searchMethod == 'اسم العائلة' && value != null) {
+      patients = await _getPatientsByLastName(value);
+    } else if (searchMethod == 'الإسم الثلاثي' && value != null) {
+      patients = await _getPatientsByFullName(value);
+    } else if (searchMethod == 'رقم الهوية' && value != null) {
+      patients = await _getPatientsById(value);
+    } else {
+      return null;
     }
-    return null;
+
+    return patients;
   }
 
-  static Future<Patient?> _getPatientByFirstName(String firstName) async {
+  static Future<List<Patient?>> _getPatientsByFirstName(
+    String firstName,
+  ) async {
     // Get a reference to the database.
     final db = await database;
 
-    // Query the table for a specific patient by first name.
+    // Query the table for all patients by first name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
       where: 'الإسم_الشخصي = ?',
       whereArgs: [firstName],
     );
-    if (maps.isNotEmpty) {
-      return Patient.fromMap(maps.first);
-    }
-    return null;
+
+    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
   }
 
-  static Future<Patient?> _getPatientByFirstMiddleName(String firstMiddleName) async {
+  static Future<List<Patient?>> _getPatientsByFirstMiddleName(
+    String firstMiddleName,
+  ) async {
     // Get a reference to the database.
     final db = await database;
 
     final List<String> names = firstMiddleName.split(" ");
-    // Query the table for a specific patient by first middle name.
+    // Query the table for all patients by first middle name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
       where: 'الإسم_الشخصي = ? AND إسم_الأب = ?',
       whereArgs: names,
     );
-    if (maps.isNotEmpty) {
-      return Patient.fromMap(maps.first);
-    }
-    return null;
+
+    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
   }
 
-  static Future<Patient?> _getPatientByFirstLastName(String firstLastName) async {
+  static Future<List<Patient?>> _getPatientsByFirstLastName(
+    String firstLastName,
+  ) async {
     // Get a reference to the database.
     final db = await database;
 
     final List<String> names = firstLastName.split(" ");
-    // Query the table for a specific patient by first last name.
+    // Query the table for all patients by first last name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
       where: 'الإسم_الشخصي = ? AND إسم_العائلة = ?',
       whereArgs: names,
     );
-    if (maps.isNotEmpty) {
-      return Patient.fromMap(maps.first);
-    }
-    return null;
+
+    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
   }
 
-  static Future<Patient?> _getPatientByLastName(String lastName) async {
+  static Future<List<Patient?>> _getPatientsByLastName(String lastName) async {
     // Get a reference to the database.
     final db = await database;
 
-    // Query the table for a specific patient by last name.
+    // Query the table for all patients by last name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
       where: 'إسم_العائلة = ?',
       whereArgs: [lastName],
     );
-    if (maps.isNotEmpty) {
-      return Patient.fromMap(maps.first);
-    }
-    return null;
+
+    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
   }
 
-  static Future<Patient?> _getPatientByFullName(String fullName) async {
+  static Future<List<Patient?>> _getPatientsByFullName(String fullName) async {
     // Get a reference to the database.
     final db = await database;
 
     List<String> names = fullName.split(" ");
-    // Query the table for a specific patient by full name.
+    // Query the table for all patients by full name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
       where: 'الإسم_الشخصي = ? AND إسم_الأب = ? AND إسم_العائلة = ?',
       whereArgs: names,
     );
-    if (maps.isNotEmpty) {
-      return Patient.fromMap(maps.first);
-    }
-    return null;
+
+    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
   }
 
-  static Future<Patient?> _getPatientById(String id) async {
-      // Get a reference to the database.
-      final db = await database;
+  static Future<List<Patient?>> _getPatientsById(String id) async {
+    // Get a reference to the database.
+    final db = await database;
 
-      // Query the table for a specific patient by ID.
-      final List<Map<String, Object?>> maps = await db.query(
-        'patients',
-        where: 'رقم_الهوية = ?',
-        whereArgs: [id],
-      );
-      if (maps.isNotEmpty) {
-        return Patient.fromMap(maps.first);
-      }
-      return null;
-    }
-    
+    // Query the table for all patients by ID.
+    final List<Map<String, Object?>> maps = await db.query(
+      'patients',
+      where: 'رقم_الهوية = ?',
+      whereArgs: [id],
+    );
 
+    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
+  }
 }

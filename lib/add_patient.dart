@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:path/path.dart' as path; // Use alias to avoid conflict
-import 'package:sqflite/sqflite.dart' as sqlite;
+// Use alias to avoid conflict
 import 'tables.dart';
 import 'database_helper.dart';
 import 'helpers.dart';
 
-
 class AddPatientPage extends StatefulWidget {
   final Function(int) onButtonPressed;
+  final Patient? curPatient;
 
-  const AddPatientPage({super.key, required this.onButtonPressed});
+  const AddPatientPage({super.key, required this.onButtonPressed, this.curPatient});
 
   @override
   State<AddPatientPage> createState() => _AddPatientPageState();
@@ -35,7 +34,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
   final TextEditingController _diagnosisController = TextEditingController();
   final TextEditingController _treatmentController = TextEditingController();
   final TextEditingController _serialNumberController = TextEditingController();
-  final TextEditingController _serialNumberYearController = TextEditingController();
+  final TextEditingController _serialNumberYearController =
+      TextEditingController();
   final TextEditingController _childrenController = TextEditingController();
 
   // Add FocusNodes for each field
@@ -54,6 +54,38 @@ class _AddPatientPageState extends State<AddPatientPage> {
   final FocusNode _serialNumberFocusNode = FocusNode();
   final FocusNode _serialNumberYearFocusNode = FocusNode();
   final FocusNode _childrenFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with current patient data if available
+    print('Initializing AddPatientPage with current patient: ${widget.curPatient}');
+    if (widget.curPatient != null) {
+      final patient = widget.curPatient!;
+
+      _nameController.text = patient.fullName ?? '';
+      _idController.text = patient.id ?? '';
+      _ageController.text = patient.age ?? '';
+      _cityController.text = patient.city ?? '';
+      _phoneController.text = patient.phoneNumber ?? '';
+      _workController.text = patient.work ?? '';
+      _healthController.text = patient.health ?? '';
+      _companionController.text = patient.companion ?? '';
+      _descriptionController.text = patient.description ?? '';
+      _diagnosisController.text = patient.diagnosis ?? '';
+      _treatmentController.text = patient.treatment ?? '';
+      _serialNumberController.text = patient.serialNumber ?? '';
+      _serialNumberYearController.text = patient.serialNumberYear ?? '';
+      _childrenController.text = patient.children ?? '';
+
+      // Set dropdown values based on current patient data
+      setState(() {
+        _selectedGender = patient.gender ?? '---';
+        _selectedPrayer = patient.prayer ?? '---';
+        _selectedMaritalStatus = patient.maritalStatus ?? '---';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -93,81 +125,226 @@ class _AddPatientPageState extends State<AddPatientPage> {
   }
 
   void _addPatientToDatabase() async {
-    // Create a new Patient object with the data from the text fields
-    // Get all the values
-    String serialNumberYear = _serialNumberYearController.text;
-    String serialNumber = _serialNumberController.text;
-    String fullName = _nameController.text;
+    try {
+      // Create a new Patient object with the data from the text fields
+      // Get all the values
+      String serialNumberYear = _serialNumberYearController.text;
+      String serialNumber = _serialNumberController.text;
+      String fullName = _nameController.text;
 
-    List<String> nameParts = fullName.split(' ');
-    String first = nameParts.isNotEmpty ? nameParts[0] : '';
-    String middle = nameParts.length > 1 ? nameParts[1] : '';
-    String last = nameParts.length > 2 ? nameParts[2] : '';
+      List<String> nameParts = fullName.split(' ');
+      String first = nameParts.isNotEmpty ? nameParts[0] : '';
+      String middle = nameParts.length > 1 ? nameParts[1] : '';
+      String last = nameParts.length > 2 ? nameParts[2] : '';
 
-    // If there are more than 3 parts, join the rest as last name
-    if (nameParts.length > 3) {
-      last = nameParts.sublist(3).join(' ');
+      // If there are more than 3 parts, join the rest as last name
+      if (nameParts.length > 3) {
+        last = nameParts.sublist(3).join(' ');
+      }
+
+      String id = _idController.text;
+      String gender = _selectedGender ?? '---';
+      String maritalStatus = _selectedMaritalStatus ?? '---';
+      String age = _ageController.text;
+      String children = _childrenController.text;
+      String prayer = _selectedPrayer ?? '---';
+      String health = _healthController.text;
+      String work = _workController.text;
+      String companion = _companionController.text;
+      String city = _cityController.text;
+      String phone = _phoneController.text;
+      String description = _descriptionController.text;
+      String diagnosis = _diagnosisController.text;
+      String treatment = _treatmentController.text;
+
+      // Create Patient object
+      Patient patient = Patient(
+        serialNumberYear: serialNumberYear,
+        serialNumber: serialNumber,
+        fullName: fullName,
+        firstName: first,
+        middleName: middle,
+        lastName: last,
+        id: id,
+        gender: gender,
+        maritalStatus: maritalStatus,
+        age: age,
+        children: children,
+        prayer: prayer,
+        health: health,
+        work: work,
+        companion: companion,
+        city: city,
+        phoneNumber: phone,
+        description: description,
+        diagnosis: diagnosis,
+        treatment: treatment,
+      );
+      if (widget.curPatient != null) {
+        await DatabaseHelper.updatePatient(patient);
+      } else {
+        await DatabaseHelper.insertPatient(patient);
+      }
+
+      // Show success dialog
+      _showSuccessDialog();
+
+      // id INTEGER PRIMARY KEY AUTOINCREMENT,
+      // name TEXT,
+      // id_number TEXT,
+      // age INTEGER,
+      // gender TEXT,
+      // marital_status TEXT,
+      // country TEXT,
+      // phone TEXT,
+      // work TEXT,
+      // health TEXT,
+      // companion TEXT,
+      // description TEXT,
+      // diagnosis TEXT,
+      // treatment TEXT,
+      // serial_number TEXT,
+      // serial_number2 TEXT,
+      // children INTEGER
+    } catch (e) {
+      _showErrorDialog(e.toString());
     }
+  }
 
-    String id = _idController.text;
-    String gender = _selectedGender ?? '---';
-    String maritalStatus = _selectedMaritalStatus ?? '---';
-    String age = _ageController.text;
-    String children = _childrenController.text;
-    String prayer = _selectedPrayer ?? '---';
-    String health = _healthController.text;
-    String work = _workController.text;
-    String companion = _companionController.text;
-    String city = _cityController.text;
-    String phone = _phoneController.text;
-    String description = _descriptionController.text;
-    String diagnosis = _diagnosisController.text;
-    String treatment = _treatmentController.text;
-
-    // Create Patient object
-    Patient patient = Patient(
-      serialNumberYear: serialNumberYear,
-      serialNumber: serialNumber,
-      fullName: fullName,
-      firstName: first,
-      middleName: middle,
-      lastName: last,
-      id: id,
-      gender: gender,
-      maritalStatus: maritalStatus,
-      age: age,
-      children: children,
-      prayer: prayer,
-      health: health,
-      work: work,
-      companion: companion,
-      city: city,
-      phoneNumber: phone,
-      description: description,
-      diagnosis: diagnosis,
-      treatment: treatment,
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User must tap button to close
+      builder: (BuildContext context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            icon: const Icon(Icons.check_circle, color: Colors.green, size: 50),
+            title: Text(
+              'تم الحفظ بنجاح',
+              style: GoogleFonts.scheherazadeNew(
+                fontSize: 24,
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              'تم حفظ بيانات المريض بنجاح\n${_nameController.text}',
+              style: GoogleFonts.scheherazadeNew(
+                fontSize: 18,
+                color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      _clearAllFields(); // Clear form
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                    ),
+                    child: Text(
+                      'إضافة مريض جديد',
+                      style: GoogleFonts.scheherazadeNew(
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      widget.onButtonPressed(0); // Go back to home
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: Text(
+                      'العودة للرئيسية',
+                      style: GoogleFonts.scheherazadeNew(
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
+  }
 
-    DatabaseHelper.insertPatient(patient);
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            icon: const Icon(Icons.error, color: Colors.red, size: 50),
+            title: Text(
+              'خطأ في الحفظ',
+              style: GoogleFonts.scheherazadeNew(
+                fontSize: 24,
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              'حدث خطأ أثناء حفظ البيانات:\n$error',
+              style: GoogleFonts.scheherazadeNew(
+                fontSize: 16,
+                color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  'موافق',
+                  style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-    // id INTEGER PRIMARY KEY AUTOINCREMENT,
-    // name TEXT,
-    // id_number TEXT,
-    // age INTEGER,
-    // gender TEXT,
-    // marital_status TEXT,
-    // country TEXT,
-    // phone TEXT,
-    // work TEXT,
-    // health TEXT,
-    // companion TEXT,
-    // description TEXT,
-    // diagnosis TEXT,
-    // treatment TEXT,
-    // serial_number TEXT,
-    // serial_number2 TEXT,
-    // children INTEGER
-    // Close the database
+  void _clearAllFields() {
+    _nameController.clear();
+    _idController.clear();
+    _ageController.clear();
+    _cityController.clear();
+    _phoneController.clear();
+    _workController.clear();
+    _healthController.clear();
+    _companionController.clear();
+    _descriptionController.clear();
+    _diagnosisController.clear();
+    _treatmentController.clear();
+    _serialNumberController.clear();
+    _serialNumberYearController.clear();
+    _childrenController.clear();
+
+    setState(() {
+      _selectedGender = '---';
+      _selectedPrayer = '---';
+      _selectedMaritalStatus = '---';
+    });
   }
 
   Widget _buildSerialNumberRow() {
@@ -251,101 +428,14 @@ class _AddPatientPageState extends State<AddPatientPage> {
     );
   }
 
-  // Widget buildTextField(
-  //   String labelName,
-  //   int? maxLength,
-  //   TextInputType keyboardType,
-  //   List<TextInputFormatter>? inputFormatters,
-  //   FocusNode focusNode,
-  //   int? maxLines,
-  //   TextInputAction textInputAction,
-  //   TextEditingController controller,
-  // ) {
-  //   return TextFormField(
-  //     focusNode: focusNode,
-  //     textInputAction: textInputAction,
-  //     decoration: InputDecoration(
-  //       labelText: labelName,
-  //       labelStyle: GoogleFonts.notoNaskhArabic(
-  //         fontSize: 20,
-  //         color: Colors.grey,
-  //       ),
-  //       floatingLabelStyle: GoogleFonts.notoNaskhArabic(
-  //         fontSize: 20,
-  //         color: Colors.black,
-  //       ),
-  //       alignLabelWithHint: true,
-  //       border: const OutlineInputBorder(
-  //         borderRadius: BorderRadius.all(Radius.circular(10)),
-  //         borderSide: BorderSide(color: Colors.black, width: 2),
-  //       ),
-  //       counterText: '',
-  //     ),
-  //     textAlign: TextAlign.right,
-  //     style: GoogleFonts.notoNaskhArabic(color: Colors.black, fontSize: 20),
-  //     controller: controller,
-  //     maxLength: maxLength,
-  //     maxLines: maxLines,
-  //     keyboardType: keyboardType,
-  //     inputFormatters: inputFormatters,
-  //     onTapOutside: (PointerEvent event) {
-  //       FocusScope.of(context).unfocus();
-  //     },
-  //   );
-  // }
-
-  // Widget buildDropdownField(
-  //   String labelName,
-  //   List<String> items, {
-  //   double fontSize = 20,
-  //   String? selectedValue,
-  //   ValueChanged<String?>? onChanged,
-  // }) {
-  //   return DropdownButtonFormField(
-  //     alignment: Alignment.centerRight,
-  //     value: selectedValue ?? items[0],
-  //     items: items.map((String item) {
-  //       return DropdownMenuItem(
-  //         value: item,
-  //         alignment: Alignment.centerRight,
-  //         child: Text(
-  //           item,
-  //           style: GoogleFonts.notoNaskhArabic(
-  //             fontSize: fontSize,
-  //             color: Colors.black,
-  //           ),
-  //           textAlign: TextAlign.right,
-  //           textDirection: TextDirection.rtl,
-  //         ),
-  //       );
-  //     }).toList(),
-  //     decoration: InputDecoration(
-  //       labelText: labelName,
-  //       labelStyle: GoogleFonts.notoNaskhArabic(
-  //         fontSize: 20,
-  //         color: Colors.black,
-  //       ),
-  //       alignLabelWithHint: true,
-  //       border: const OutlineInputBorder(
-  //         borderRadius: BorderRadius.all(Radius.circular(10)),
-  //         borderSide: BorderSide(color: Colors.black, width: 2),
-  //       ),
-  //       contentPadding: const EdgeInsets.symmetric(
-  //         vertical: 20,
-  //         horizontal: 10,
-  //       ),
-  //     ),
-  //     onChanged: onChanged,
-  //   );
-  // }
-
   Widget _buildAgeAndGenderRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         SizedBox(
           width: MediaQuery.of(context).size.width * 0.2,
-          child: buildTextField(context,
+          child: buildTextField(
+            context,
             'العمر',
             3,
             TextInputType.number,
@@ -358,11 +448,10 @@ class _AddPatientPageState extends State<AddPatientPage> {
         ),
         SizedBox(
           width: MediaQuery.of(context).size.width * 0.2,
-          child: buildDropdownField('الجنس', [
-            '---',
-            'ذكر',
-            'أنثى',
-          ], fontSize: 18,
+          child: buildDropdownField(
+            'الجنس',
+            ['---', 'ذكر', 'أنثى'],
+            fontSize: 18,
             selectedValue: _selectedGender,
             onChanged: (String? newValue) {
               setState(() {
@@ -388,8 +477,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
         SizedBox(
           width: MediaQuery.of(context).size.width * 0.2,
           child: buildDropdownField(
-            'صلاة', 
-            ['---', 'نعم', 'لا'], 
+            'صلاة',
+            ['---', 'نعم', 'لا'],
             selectedValue: _selectedPrayer,
             onChanged: (String? newValue) {
               setState(() {
@@ -408,13 +497,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
       children: [
         SizedBox(
           width: MediaQuery.of(context).size.width * 0.418,
-          child: buildDropdownField('الحالة الإجتماعية', [
-            '---',
-            'أعزب\\عزباء',
-            'متزوج\\ة',
-            'مطلق\\ة',
-            'أرمل\\ة',
-            ], 
+          child: buildDropdownField(
+            'الحالة الإجتماعية',
+            ['---', 'أعزب\\عزباء', 'متزوج\\ة', 'مطلق\\ة', 'أرمل\\ة'],
             selectedValue: _selectedMaritalStatus,
             onChanged: (String? newValue) {
               setState(() {
@@ -611,10 +696,30 @@ class _AddPatientPageState extends State<AddPatientPage> {
                         ElevatedButton.icon(
                           onPressed: () {
                             print('حفظ');
+                            // if all fields are empty, show a message
+                            if (_nameController.text.isEmpty &&
+                                _serialNumberController.text.isEmpty &&
+                                _serialNumberYearController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'يرجى ملء الحقول المطلوبة:\n الإسم الثلاثي، الرقم التسلسلي، سنة الرقم التسلسلي',
+                                    style: GoogleFonts.scheherazadeNew(
+                                      fontSize: 20,
+                                      color: Colors.red,
+                                    ),
+                                    textAlign: TextAlign.right,
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
                             // Save to database
                             _addPatientToDatabase();
-
-                            print('Patient saved: ${_nameController.text} - ${_cityController.text}');
+                            print(
+                              'Patient saved: ${_nameController.text} - ${_cityController.text}',
+                            );
                           },
                           icon: const Icon(Icons.save, color: Colors.green),
                           label: Text(

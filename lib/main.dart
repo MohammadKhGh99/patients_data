@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:patients_data/add_patient.dart';
 import 'package:patients_data/search_patient.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:patients_data/search_results.dart';
+import 'package:patients_data/tables.dart';
 
 void main() {
+  // WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -45,16 +48,27 @@ class _MyHomePageState extends State<MyHomePage> {
   var selectedIndex = 0;
   var indexesArray = [0];
   var backButtonPressed = false;
+  List<Patient?>? foundPatients = [];
+  Patient? curPatient;
+
+  void _onButtonPressed(int index, {List<Patient?>? patients, Patient? selectedPatient}) {
+    setState(() {
+      selectedIndex = index;
+      if (patients != null) {
+        foundPatients = patients; // Store the found patients
+      }
+      if (selectedPatient != null) {
+        curPatient = selectedPatient;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     Widget page = MainMenuPage(
-      onButtonPressed: (int index) {
-        setState(() {
-          selectedIndex = index;
-        });
-      },
+      onButtonPressed: (int index) => _onButtonPressed(index),
     );
+
     if (!backButtonPressed) {
       if (indexesArray.isNotEmpty && indexesArray.last != selectedIndex) {
         indexesArray.add(selectedIndex);
@@ -68,24 +82,22 @@ class _MyHomePageState extends State<MyHomePage> {
     switch (selectedIndex) {
       case 0:
         page = MainMenuPage(
-          onButtonPressed: (int index) {
-            setState(() {
-              selectedIndex = index;
-            });
-          },
+          onButtonPressed: (int index) => _onButtonPressed(index),
         );
       case 1:
         page = AddPatientPage(
-          onButtonPressed: (int index) {
-            setState(() {
-              selectedIndex = index;
-            });
-          },
+          onButtonPressed: (int index) => _onButtonPressed(index),
+          curPatient: curPatient,
         );
       case 2:
-        page = SearchPatientPage();
-      // case 3:
-      //   page = SearchResultsPage();
+        page = SearchPatientPage(
+          onButtonPressed: _onButtonPressed,
+        );
+      case 3:
+        page = SearchResultsPage(
+          onButtonPressed: _onButtonPressed,
+          patients: foundPatients ?? [],
+        );
       default:
         throw UnimplementedError('no widget for $selectedIndex');
     }

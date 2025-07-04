@@ -12,7 +12,7 @@ Widget buildTextField(
   FocusNode focusNode,
   int? maxLines,
   TextInputAction textInputAction,
-  TextEditingController controller,
+  TextEditingController? controller,
 ) {
   return TextFormField(
     focusNode: focusNode,
