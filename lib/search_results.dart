@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:patients_data/add_patient.dart';
 import 'package:patients_data/tables.dart';
 import 'helpers.dart';
 

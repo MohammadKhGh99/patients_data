@@ -134,8 +134,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
 
       List<String> nameParts = fullName.split(' ');
       String first = nameParts.isNotEmpty ? nameParts[0] : '';
-      String middle = nameParts.length > 1 ? nameParts[1] : '';
-      String last = nameParts.length > 2 ? nameParts[2] : '';
+      String middle = nameParts.length > 2 ? nameParts[1] : '';
+      String last = nameParts.length > 1 ? nameParts[2] : '';
 
       // If there are more than 3 parts, join the rest as last name
       if (nameParts.length > 3) {
@@ -376,6 +376,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
               fontSize: 20,
             ),
             controller: _serialNumberController,
+            readOnly: widget.curPatient != null, // Make it read-only if editing an existing patient
             maxLength: 10,
             keyboardType: TextInputType.number,
             inputFormatters: <TextInputFormatter>[
@@ -414,6 +415,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
               fontSize: 20,
             ),
             controller: _serialNumberYearController,
+            readOnly: widget.curPatient != null, // Make it read-only if editing an existing patient
             maxLength: 4,
             keyboardType: TextInputType.number,
             inputFormatters: <TextInputFormatter>[

@@ -83,9 +83,9 @@ class DatabaseHelper {
       'patients',
       patient.toMap(),
       // Ensure that the Patient has a matching id.
-      where: 'id = ?',
+      where: 'الإسم الثلاثي = ? AND الرقم_التسلسلي = ? AND سنة_الرقم_التسلسلي = ?',
       // Pass the Patient's id as a whereArg to prevent SQL injection.
-      whereArgs: [patient.id],
+      whereArgs: [patient.fullName, patient.serialNumber, patient.serialNumberYear],
     );
   }
 
@@ -181,12 +181,12 @@ class DatabaseHelper {
     // Get a reference to the database.
     final db = await database;
 
-    List<String> names = fullName.split(" ");
+    // List<String> names = fullName.split(" ");
     // Query the table for all patients by full name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
-      where: 'الإسم_الشخصي = ? AND إسم_الأب = ? AND إسم_العائلة = ?',
-      whereArgs: names,
+      where: 'الإسم الثلاثي = ?',
+      whereArgs: [fullName],
     );
 
     return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
