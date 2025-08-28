@@ -62,11 +62,64 @@ class _MyHomePageState extends State<MyHomePage> {
     int index, {
     List<Patient?>? patients,
     Patient? selectedPatient,
-  }) {
+  }) async {
+    // Handle system back button
+    if (index == -1) {
+      // Use same logic as AppBar back button
+      setState(() {
+        backButtonPressed = true;
+        if (indexesArray.length <= 1) {
+          selectedIndex = 0;
+          return;
+        }
+        indexesArray.removeLast();
+        selectedIndex = indexesArray.isNotEmpty ? indexesArray.last : 0;
+      });
+      return; // Don't show loading for back navigation
+    }
+
+    // Show loading animation
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => Center(
+            child: Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    '...جاري التحميل',
+                    style: GoogleFonts.scheherazadeNew(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+
+    // Simulate loading time (you can add actual data loading here)
+    await Future.delayed(Duration(milliseconds: 500));
+
+    // Close loading dialog
+    if (mounted) Navigator.of(context).pop();
+
+    // Update state
     setState(() {
       selectedIndex = index;
       if (patients != null) {
-        foundPatients = patients; // Store the found patients
+        foundPatients = patients;
       }
       if (selectedPatient != null) {
         curPatient = selectedPatient;
@@ -80,6 +133,11 @@ class _MyHomePageState extends State<MyHomePage> {
       onButtonPressed: (int index) => _onButtonPressed(index),
     );
 
+    if (selectedIndex == 0) {
+      indexesArray.clear();
+      indexesArray.add(0);
+      curPatient = null;
+    }
     if (!backButtonPressed) {
       if (indexesArray.isNotEmpty && indexesArray.last != selectedIndex) {
         indexesArray.add(selectedIndex);
@@ -169,7 +227,28 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                     const SizedBox(height: 50),
-                    page,
+                    AnimatedSwitcher(
+                      duration: Duration(milliseconds: 300),
+                      transitionBuilder: (
+                        Widget child,
+                        Animation<double> animation,
+                      ) {
+                        // ✅ Use FadeTransition instead of SlideTransition to avoid layout issues
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      child: Container(
+                        key: ValueKey<int>(selectedIndex),
+                        child: PopScope(
+                          canPop: false, // ✅ Add canPop: false
+                          onPopInvokedWithResult: (didPop, result) {
+                            if (!didPop) {
+                              _onButtonPressed(-1);
+                            }
+                          },
+                          child: page,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -306,7 +385,7 @@ class _MainMenuState extends State<MainMenuPage> {
               child: AlertDialog(
                 content: Row(
                   children: [
-                    CircularProgressIndicator(),
+                    CircularProgressIndicator(strokeWidth: 2),
                     SizedBox(width: 20),
                     Text(
                       'جاري الرفع إلى جوجل درايف...',
@@ -504,182 +583,188 @@ class _MainMenuState extends State<MainMenuPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: <Widget>[
-          // Show Google account status
-          if (_isSignedIn && _userEmail != null) ...[
-            Container(
-              padding: EdgeInsets.all(10),
-              margin: EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.green, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.account_circle, color: Colors.green),
-                  SizedBox(width: 10),
-                  Text(
-                    'متصل: $_userEmail',
-                    style: GoogleFonts.scheherazadeNew(
-                      fontSize: 14,
-                      color: Colors.green,
-                    ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        // Show Google account status
+        if (_isSignedIn && _userEmail != null) ...[
+          Container(
+            padding: EdgeInsets.all(10),
+            // margin: EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.green, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.account_circle, color: Colors.green),
+                SizedBox(width: 10),
+                Text(
+                  'متصل: $_userEmail',
+                  style: GoogleFonts.scheherazadeNew(
+                    fontSize: 14,
+                    color: Colors.green,
                   ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 80),
-          ElevatedButton.icon(
-            onPressed: () {
-              print('إضافة مريض جديد');
-              widget.onButtonPressed(1);
-            },
-            icon: const Icon(Icons.add, color: Colors.black),
-            label: Text(
-              'إضافة مريض جديد',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 25,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: () {
-              print('ابحث عن مريض');
-              widget.onButtonPressed(2);
-            },
-            icon: const Icon(Icons.search, color: Colors.black),
-            label: Text(
-              'ابحث عن مريض',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 25,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: _uploadToGoogleDrive,
-            icon: const Icon(Icons.cloud_upload, color: Colors.green),
-            label: Text(
-              'حفظ في جوجل درايف',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 20,
-                color: Colors.green,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: _downloadFromGoogleDrive,
-            icon: const Icon(Icons.cloud_download, color: Colors.green),
-            label: Text(
-              'استعادة من جوجل درايف',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 20,
-                color: Colors.green,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: () {
-              print('تحويل إلى ملف اكسل');
-            },
-            icon: const Icon(Icons.swap_horiz, color: Colors.green),
-            label: Text(
-              'تحويل إلى ملف اكسل',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 20,
-                color: Colors.green,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: _sendDatabaseByEmail,
-            icon: const Icon(Icons.backup, color: Colors.blue),
-            label: Text(
-              'إرسال نسخة احتياطية بالإيميل',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 20,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-                    // Add this to your build method in _MainMenuState:
-          const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: () async {
-              final success = await GoogleDriveService.signInToGoogle();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(success ? 'تم تسجيل الدخول بنجاح' : 'فشل تسجيل الدخول'),
-                  backgroundColor: success ? Colors.green : Colors.red,
                 ),
-              );
-              _checkSignInStatus();
-            },
-            icon: const Icon(Icons.login, color: Colors.purple),
-            label: Text(
-              'اختبار تسجيل الدخول Google',
-              style: GoogleFonts.scheherazadeNew(
-                fontSize: 16,
-                color: Colors.purple,
-              ),
+              ],
             ),
-          ),
-                    // Add this button temporarily for debugging
-          ElevatedButton.icon(
-            onPressed: () async {
-              // Check environment configuration
-              print('=== DEBUG INFO ===');
-              print('Client ID from env: ${EnvConfig.googleOAuthClientId}');
-              print('Has Google Credentials: ${EnvConfig.hasGoogleCredentials}');
-              print('Client ID length: ${EnvConfig.googleOAuthClientId.length}');
-              // print('Client ID starts with: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...');
-              
-              // Check package name
-              print('Expected package: com.example.patients_data');
-              
-              // Show dialog with info
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Debug Info'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Has Client ID: ${EnvConfig.hasGoogleCredentials}'),
-                      Text('Client ID Length: ${EnvConfig.googleOAuthClientId.length}'),
-                      if (EnvConfig.hasGoogleCredentials)
-                        Text('Client ID: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...'),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('OK'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            icon: Icon(Icons.bug_report),
-            label: Text('Debug Config'),
           ),
         ],
-      ),
+
+        const SizedBox(height: 50),
+        ElevatedButton.icon(
+          onPressed: () {
+            print('إضافة مريض جديد');
+            widget.onButtonPressed(1);
+          },
+          icon: const Icon(Icons.add, color: Colors.black),
+          label: Text(
+            'إضافة مريض جديد',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 25,
+              color: Colors.black,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: () {
+            print('ابحث عن مريض');
+            widget.onButtonPressed(2);
+          },
+          icon: const Icon(Icons.search, color: Colors.black),
+          label: Text(
+            'ابحث عن مريض',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 25,
+              color: Colors.black,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: _uploadToGoogleDrive,
+          icon: const Icon(Icons.cloud_upload, color: Colors.green),
+          label: Text(
+            'حفظ في جوجل درايف',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 20,
+              color: Colors.green,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: _downloadFromGoogleDrive,
+          icon: const Icon(Icons.cloud_download, color: Colors.green),
+          label: Text(
+            'استعادة من جوجل درايف',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 20,
+              color: Colors.green,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: () {
+            print('تحويل إلى ملف اكسل');
+          },
+          icon: const Icon(Icons.swap_horiz, color: Colors.green),
+          label: Text(
+            'تحويل إلى ملف اكسل',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 20,
+              color: Colors.green,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: _sendDatabaseByEmail,
+          icon: const Icon(Icons.backup, color: Colors.blue),
+          label: Text(
+            'إرسال نسخة احتياطية بالإيميل',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 20,
+              color: Colors.blue,
+            ),
+          ),
+        ),
+        // Add this to your build method in _MainMenuState:
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: () async {
+            final success = await GoogleDriveService.signInToGoogle();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  success ? 'تم تسجيل الدخول بنجاح' : 'فشل تسجيل الدخول',
+                ),
+                backgroundColor: success ? Colors.green : Colors.red,
+              ),
+            );
+            _checkSignInStatus();
+          },
+          icon: const Icon(Icons.login, color: Colors.purple),
+          label: Text(
+            'اختبار تسجيل الدخول Google',
+            style: GoogleFonts.scheherazadeNew(
+              fontSize: 16,
+              color: Colors.purple,
+            ),
+          ),
+        ),
+        // Add this button temporarily for debugging
+        ElevatedButton.icon(
+          onPressed: () async {
+            // Check environment configuration
+            print('=== DEBUG INFO ===');
+            print('Client ID from env: ${EnvConfig.googleOAuthClientId}');
+            print('Has Google Credentials: ${EnvConfig.hasGoogleCredentials}');
+            print('Client ID length: ${EnvConfig.googleOAuthClientId.length}');
+            // print('Client ID starts with: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...');
+
+            // Check package name
+            print('Expected package: com.example.patients_data');
+
+            // Show dialog with info
+            showDialog(
+              context: context,
+              builder:
+                  (context) => AlertDialog(
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Has Client ID: ${EnvConfig.hasGoogleCredentials}',
+                        ),
+                        Text(
+                          'Client ID Length: ${EnvConfig.googleOAuthClientId.length}',
+                        ),
+                        if (EnvConfig.hasGoogleCredentials)
+                          Text(
+                            'Client ID: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...',
+                          ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('OK'),
+                      ),
+                    ],
+                  ),
+            );
+          },
+          icon: Icon(Icons.bug_report),
+          label: Text('Debug Config'),
+        ),
+      ],
     );
   }
 }

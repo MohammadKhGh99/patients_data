@@ -4,7 +4,8 @@ import 'package:patients_data/tables.dart';
 import 'helpers.dart';
 
 class SearchResultsPage extends StatefulWidget {
-  final Function(int, {List<Patient?>? patients, Patient? selectedPatient}) onButtonPressed;
+  final Function(int, {List<Patient?>? patients, Patient? selectedPatient})
+  onButtonPressed;
   final List<Patient?> patients;
 
   const SearchResultsPage({
@@ -72,7 +73,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  widget.onButtonPressed(2); // Go back to search
+                  widget.onButtonPressed(-1); // Go back to search
                 },
                 child: Text(
                   'العودة للبحث',
@@ -99,12 +100,12 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          widget.onButtonPressed(0);
+          // widget.onButtonPressed(2);
         }
       },
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: Expanded(
+        child: SingleChildScrollView(
           child: Form(
             child: Padding(
               padding: const EdgeInsets.only(left: 30, right: 30),
@@ -115,7 +116,10 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   ElevatedButton.icon(
                     onPressed: () {
                       print('تم');
-                      widget.onButtonPressed(1, selectedPatient: searchResults[selectedResult]);
+                      widget.onButtonPressed(
+                        1,
+                        selectedPatient: searchResults[selectedResult],
+                      );
                     },
                     icon: const Icon(Icons.search, color: Colors.black),
                     label: Text(

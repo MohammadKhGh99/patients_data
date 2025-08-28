@@ -10,7 +10,11 @@ class AddPatientPage extends StatefulWidget {
   final Function(int) onButtonPressed;
   final Patient? curPatient;
 
-  const AddPatientPage({super.key, required this.onButtonPressed, this.curPatient});
+  const AddPatientPage({
+    super.key,
+    required this.onButtonPressed,
+    this.curPatient,
+  });
 
   @override
   State<AddPatientPage> createState() => _AddPatientPageState();
@@ -22,7 +26,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
   String? _selectedMaritalStatus = '---';
 
   // Add TextEditingControllers for each field
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _middleNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
@@ -39,7 +45,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
   final TextEditingController _childrenController = TextEditingController();
 
   // Add FocusNodes for each field
-  final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _firstNameFocusNode = FocusNode();
+  final FocusNode _middleNameFocusNode = FocusNode();
+  final FocusNode _lastNameFocusNode = FocusNode();
   final FocusNode _idFocusNode = FocusNode();
   final FocusNode _ageFocusNode = FocusNode();
   final FocusNode _genderFocusNode = FocusNode();
@@ -59,11 +67,15 @@ class _AddPatientPageState extends State<AddPatientPage> {
   void initState() {
     super.initState();
     // Initialize controllers with current patient data if available
-    print('Initializing AddPatientPage with current patient: ${widget.curPatient}');
+    print(
+      'Initializing AddPatientPage with current patient: ${widget.curPatient}',
+    );
     if (widget.curPatient != null) {
       final patient = widget.curPatient!;
 
-      _nameController.text = patient.fullName ?? '';
+      _firstNameController.text = patient.firstName ?? '';
+      _middleNameController.text = patient.middleName ?? '';
+      _lastNameController.text = patient.lastName ?? '';
       _idController.text = patient.id ?? '';
       _ageController.text = patient.age ?? '';
       _cityController.text = patient.city ?? '';
@@ -84,13 +96,37 @@ class _AddPatientPageState extends State<AddPatientPage> {
         _selectedPrayer = patient.prayer ?? '---';
         _selectedMaritalStatus = patient.maritalStatus ?? '---';
       });
+    } else {
+      _initializeSerialNumbers();
+    }
+  }
+
+  // ✅ Initialize serial numbers properly
+  Future<void> _initializeSerialNumbers() async {
+    // For new patient, get the next available serial number
+    try {
+      int nextSerial = await DatabaseHelper.getNextSerialNumber();
+      setState(() {
+        _serialNumberController.text = nextSerial.toString();
+        _serialNumberYearController.text = DateTime.now().year.toString();
+      });
+      print('Next serial number will be: $nextSerial');
+    } catch (e) {
+      print('Error getting next serial number: $e');
+      // Fallback
+      setState(() {
+        _serialNumberController.text = '2';
+        _serialNumberYearController.text = DateTime.now().year.toString();
+      });
     }
   }
 
   @override
   void dispose() {
     // Dispose TextEditingControllers when the widget is removed
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
     _idController.dispose();
     _ageController.dispose();
     _cityController.dispose();
@@ -106,7 +142,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
     _childrenController.dispose();
 
     // Dispose FocusNodes when the widget is removed
-    _nameFocusNode.dispose();
+    _firstNameFocusNode.dispose();
+    _middleNameFocusNode.dispose();
+    _lastNameFocusNode.dispose();
     _idFocusNode.dispose();
     _ageFocusNode.dispose();
     _genderFocusNode.dispose();
@@ -130,17 +168,20 @@ class _AddPatientPageState extends State<AddPatientPage> {
       // Get all the values
       String serialNumberYear = _serialNumberYearController.text;
       String serialNumber = _serialNumberController.text;
-      String fullName = _nameController.text;
+      String firstName = _firstNameController.text;
+      String middleName = _middleNameController.text;
+      String lastName = _lastNameController.text;
+      String fullName = '$firstName $middleName $lastName';
 
-      List<String> nameParts = fullName.split(' ');
-      String first = nameParts.isNotEmpty ? nameParts[0] : '';
-      String middle = nameParts.length > 2 ? nameParts[1] : '';
-      String last = nameParts.length > 1 ? nameParts[2] : '';
+      // List<String> nameParts = fullName.split(' ');
+      // String first = nameParts.isNotEmpty ? nameParts[0] : '';
+      // String middle = nameParts.length > 2 ? nameParts[1] : '';
+      // String last = nameParts.length > 1 ? nameParts[2] : '';
 
       // If there are more than 3 parts, join the rest as last name
-      if (nameParts.length > 3) {
-        last = nameParts.sublist(3).join(' ');
-      }
+      // if (nameParts.length > 3) {
+      //   last = nameParts.sublist(3).join(' ');
+      // }
 
       String id = _idController.text;
       String gender = _selectedGender ?? '---';
@@ -162,9 +203,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
         serialNumberYear: serialNumberYear,
         serialNumber: serialNumber,
         fullName: fullName,
-        firstName: first,
-        middleName: middle,
-        lastName: last,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
         id: id,
         gender: gender,
         maritalStatus: maritalStatus,
@@ -181,31 +222,35 @@ class _AddPatientPageState extends State<AddPatientPage> {
         treatment: treatment,
       );
       if (widget.curPatient != null) {
-        await DatabaseHelper.updatePatient(patient);
+        // Update existing patient only if there is at least one change
+        if (widget.curPatient?.age != age ||
+            widget.curPatient?.children != children ||
+            widget.curPatient?.gender != gender ||
+            widget.curPatient?.id != id ||
+            widget.curPatient?.maritalStatus != maritalStatus ||
+            widget.curPatient?.health != health ||
+            widget.curPatient?.work != work ||
+            widget.curPatient?.companion != companion ||
+            widget.curPatient?.city != city ||
+            widget.curPatient?.phoneNumber != phone ||
+            widget.curPatient?.description != description ||
+            widget.curPatient?.diagnosis != diagnosis ||
+            widget.curPatient?.treatment != treatment ||
+            widget.curPatient?.serialNumber != serialNumber ||
+            widget.curPatient?.serialNumberYear != serialNumberYear ||
+            widget.curPatient?.firstName != firstName ||
+            widget.curPatient?.middleName != middleName ||
+            widget.curPatient?.lastName != lastName ||
+            widget.curPatient?.fullName != fullName ||
+            widget.curPatient?.prayer != prayer) {
+          await DatabaseHelper.updatePatient(patient);
+        }
       } else {
         await DatabaseHelper.insertPatient(patient);
       }
 
       // Show success dialog
       _showSuccessDialog();
-
-      // id INTEGER PRIMARY KEY AUTOINCREMENT,
-      // name TEXT,
-      // id_number TEXT,
-      // age INTEGER,
-      // gender TEXT,
-      // marital_status TEXT,
-      // country TEXT,
-      // phone TEXT,
-      // work TEXT,
-      // health TEXT,
-      // companion TEXT,
-      // description TEXT,
-      // diagnosis TEXT,
-      // treatment TEXT,
-      // serial_number TEXT,
-      // serial_number2 TEXT,
-      // children INTEGER
     } catch (e) {
       _showErrorDialog(e.toString());
     }
@@ -230,7 +275,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
               textAlign: TextAlign.center,
             ),
             content: Text(
-              'تم حفظ بيانات المريض بنجاح\n${_nameController.text}',
+              'تم حفظ بيانات المريض بنجاح\n${_firstNameController.text} ${_middleNameController.text} ${_lastNameController.text}',
               style: GoogleFonts.scheherazadeNew(
                 fontSize: 18,
                 color: Colors.black,
@@ -325,7 +370,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
   }
 
   void _clearAllFields() {
-    _nameController.clear();
+    _firstNameController.clear();
+    _middleNameController.clear();
+    _lastNameController.clear();
     _idController.clear();
     _ageController.clear();
     _cityController.clear();
@@ -352,12 +399,13 @@ class _AddPatientPageState extends State<AddPatientPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-          width: MediaQuery.of(context).size.width * 0.2,
+          width: MediaQuery.of(context).size.width * 0.35,
           child: TextFormField(
+            enabled: false,
             focusNode: _serialNumberFocusNode,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              labelText: 'الرقم',
+              labelText: 'الرقم التسلسلي',
               labelStyle: GoogleFonts.notoNaskhArabic(
                 fontSize: 20,
                 color: Colors.black,
@@ -376,7 +424,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
               fontSize: 20,
             ),
             controller: _serialNumberController,
-            readOnly: widget.curPatient != null, // Make it read-only if editing an existing patient
+            readOnly:
+                widget.curPatient !=
+                null, // Make it read-only if editing an existing patient
             maxLength: 10,
             keyboardType: TextInputType.number,
             inputFormatters: <TextInputFormatter>[
@@ -393,10 +443,11 @@ class _AddPatientPageState extends State<AddPatientPage> {
         SizedBox(
           width: MediaQuery.of(context).size.width * 0.25,
           child: TextFormField(
+            enabled: false,
             focusNode: _serialNumberYearFocusNode,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              labelText: 'التسلسلي',
+              labelText: 'السنة',
               labelStyle: GoogleFonts.notoNaskhArabic(
                 fontSize: 20,
                 color: Colors.black,
@@ -415,7 +466,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
               fontSize: 20,
             ),
             controller: _serialNumberYearController,
-            readOnly: widget.curPatient != null, // Make it read-only if editing an existing patient
+            readOnly:
+                widget.curPatient !=
+                null, // Make it read-only if editing an existing patient
             maxLength: 4,
             keyboardType: TextInputType.number,
             inputFormatters: <TextInputFormatter>[
@@ -606,7 +659,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          widget.onButtonPressed(0);
+          // widget.onButtonPressed(0);
         }
       },
       child: Directionality(
@@ -620,28 +673,70 @@ class _AddPatientPageState extends State<AddPatientPage> {
                   children: <Widget>[
                     _buildSerialNumberRow(),
                     const SizedBox(height: 20),
-                    buildTextField(
-                      context,
-                      'الإسم الثلاثي',
-                      30,
-                      TextInputType.name,
-                      null,
-                      _nameFocusNode,
-                      1,
-                      TextInputAction.next,
-                      _nameController,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: buildTextField(
+                            context,
+                            'الإسم الشخصي',
+                            15,
+                            TextInputType.name,
+                            null,
+                            _firstNameFocusNode,
+                            1,
+                            TextInputAction.next,
+                            _firstNameController,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: buildTextField(
+                            context,
+                            'إسم الأب',
+                            15,
+                            TextInputType.name,
+                            null,
+                            _middleNameFocusNode,
+                            1,
+                            TextInputAction.next,
+                            _middleNameController,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
-                    buildTextField(
-                      context,
-                      'رقم الهوية',
-                      9,
-                      TextInputType.number,
-                      [FilteringTextInputFormatter.digitsOnly],
-                      _idFocusNode,
-                      1,
-                      TextInputAction.next,
-                      _idController,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: buildTextField(
+                            context,
+                            'إسم العائلة',
+                            15,
+                            TextInputType.name,
+                            null,
+                            _lastNameFocusNode,
+                            1,
+                            TextInputAction.next,
+                            _lastNameController,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: buildTextField(
+                            context,
+                            'رقم الهوية',
+                            9,
+                            TextInputType.number,
+                            [FilteringTextInputFormatter.digitsOnly],
+                            _idFocusNode,
+                            1,
+                            TextInputAction.next,
+                            _idController,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
                     _buildAgeAndGenderRow(),
@@ -699,7 +794,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
                           onPressed: () {
                             print('حفظ');
                             // if all fields are empty, show a message
-                            if (_nameController.text.isEmpty &&
+                            if (_firstNameController.text.isEmpty &&
+                                _middleNameController.text.isEmpty &&
+                                _lastNameController.text.isEmpty &&
                                 _serialNumberController.text.isEmpty &&
                                 _serialNumberYearController.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -720,7 +817,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
                             // Save to database
                             _addPatientToDatabase();
                             print(
-                              'Patient saved: ${_nameController.text} - ${_cityController.text}',
+                              'Patient saved: ${_firstNameController.text} ${_middleNameController.text} ${_lastNameController.text} - ${_cityController.text}',
                             );
                           },
                           icon: const Icon(Icons.save, color: Colors.green),

@@ -4,6 +4,7 @@ import 'tables.dart';
 
 class DatabaseHelper {
   static Database? _database;
+  static int lastPatientSerialNumber = 2;
 
   static Future<Database> get database async {
     if (_database != null) return _database!;
@@ -19,8 +20,8 @@ class DatabaseHelper {
   static Future<void> _createDatabase(Database db, int version) async {
     await db.execute('''
       CREATE TABLE patients (
-      سنة_الرقم_التسلسلي nvarchar(4),
-      الرقم_التسلسلي nvarchar(20),
+      الرقم_التسلسلي INTEGER PRIMARY KEY AUTOINCREMENT,
+      السنة nvarchar(4),
       الإسم_الثلاثي nvarchar(45),
       الإسم_الشخصي nvarchar(15),
       إسم_الأب nvarchar(15),
@@ -41,6 +42,19 @@ class DatabaseHelper {
       العلاج nvarchar(400)
       )
     ''');
+
+
+     await db.execute('''
+      INSERT INTO sqlite_sequence (name, seq) VALUES ('patients', 1)
+    ''');
+
+    // await db.execute('''
+    //   INSERT INTO patients (الرقم_التسلسلي, الإسم_الشخصي) VALUES (1, 'dummy')
+    // ''');
+
+    // await db.execute('''
+    //   DELETE FROM patients WHERE الرقم_التسلسلي = 1
+    // ''');
   }
 
   // Insert patient function
@@ -51,7 +65,7 @@ class DatabaseHelper {
       // Insert the patient
       await db.insert(
         'patients',
-        patient.toMap(),
+        patient.toMapForInsertion(),
         conflictAlgorithm: ConflictAlgorithm.replace, // Changed from ignore
       );
 
@@ -60,6 +74,7 @@ class DatabaseHelper {
       // Get count after insertion (await instead of then)
       final patients = await getAllPatients();
       print('Total patients: $patients');
+      lastPatientSerialNumber++;
     } catch (e) {
       print('Error inserting patient: $e');
       rethrow;
@@ -81,30 +96,33 @@ class DatabaseHelper {
     // Update the given Patient.
     await db.update(
       'patients',
-      patient.toMap(),
+      patient.toMapForInsertion(),
       // Ensure that the Patient has a matching id.
-      where: 'الإسم الثلاثي = ? AND الرقم_التسلسلي = ? AND سنة_الرقم_التسلسلي = ?',
+      where: 'الرقم_التسلسلي = ? AND السنة = ?',
       // Pass the Patient's id as a whereArg to prevent SQL injection.
-      whereArgs: [patient.fullName, patient.serialNumber, patient.serialNumberYear],
+      whereArgs: [patient.serialNumber, patient.serialNumberYear],
     );
   }
 
   static Future<List<Patient?>?> getPatients(
     String searchMethod,
     String? value,
+    String? middleOrLast,
   ) async {
     List<Patient?>? patients = [];
-    if (searchMethod == 'الإسم الشخصي' && value != null) {
+    if (value == null || value == "") {
+      patients = await getAllPatients();
+    } else if (searchMethod == 'الإسم الشخصي') {
       patients = await _getPatientsByFirstName(value);
-    } else if (searchMethod == 'الإسم الشخصي واسم الأب' && value != null) {
-      patients = await _getPatientsByFirstMiddleName(value);
-    } else if (searchMethod == 'الإسم الشخصي واسم العائلة' && value != null) {
-      patients = await _getPatientsByFirstLastName(value);
-    } else if (searchMethod == 'اسم العائلة' && value != null) {
+    } else if (searchMethod == 'الإسم الشخصي واسم الأب') {
+      patients = await _getPatientsByFirstMiddleName(value, middleOrLast);
+    } else if (searchMethod == 'الإسم الشخصي واسم العائلة') {
+      patients = await _getPatientsByFirstLastName(value, middleOrLast);
+    } else if (searchMethod == 'اسم العائلة') {
       patients = await _getPatientsByLastName(value);
-    } else if (searchMethod == 'الإسم الثلاثي' && value != null) {
+    } else if (searchMethod == 'الإسم الثلاثي') {
       patients = await _getPatientsByFullName(value);
-    } else if (searchMethod == 'رقم الهوية' && value != null) {
+    } else if (searchMethod == 'رقم الهوية') {
       patients = await _getPatientsById(value);
     } else {
       return null;
@@ -130,12 +148,12 @@ class DatabaseHelper {
   }
 
   static Future<List<Patient?>> _getPatientsByFirstMiddleName(
-    String firstMiddleName,
+    String firstName, String? middleName,
   ) async {
     // Get a reference to the database.
     final db = await database;
 
-    final List<String> names = firstMiddleName.split(" ");
+    final List<String?> names = [firstName, middleName];
     // Query the table for all patients by first middle name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
@@ -147,12 +165,12 @@ class DatabaseHelper {
   }
 
   static Future<List<Patient?>> _getPatientsByFirstLastName(
-    String firstLastName,
+    String firstName, String? lastName,
   ) async {
     // Get a reference to the database.
     final db = await database;
 
-    final List<String> names = firstLastName.split(" ");
+    final List<String?> names = [firstName, lastName];
     // Query the table for all patients by first last name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
@@ -204,5 +222,51 @@ class DatabaseHelper {
     );
 
     return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
+  }
+
+  static Future<int> getPatientsCount() async {
+    return (await getAllPatients()).length + 2;
+  }
+
+  // ✅ Get the next serial number that will be used
+  static Future<int> getNextSerialNumber() async {
+    try {
+      final db = await database;
+
+      // Get the current sequence value
+      final List<Map<String, Object?>> result = await db.rawQuery(
+        'SELECT seq FROM sqlite_sequence WHERE name = ?',
+        ['patients'],
+      );
+
+      if (result.isNotEmpty) {
+        int currentSeq = result.first['seq'] as int;
+        return currentSeq + 1; // Next number will be current + 1
+      } else {
+        return 2; // If no sequence found, start from 2
+      }
+    } catch (e) {
+      print('Error getting next serial number: $e');
+      return 2;
+    }
+  }
+
+  static Future<int> getLastSerialNumber() async {
+    try {
+      final db = await database;
+
+      final List<Map<String, Object?>> result = await db.rawQuery(
+        'SELECT MAX(الرقم_التسلسلي) as last_serial FROM patients',
+      );
+
+      if (result.isNotEmpty && result.first['last_serial'] != null) {
+        return result.first['last_serial'] as int;
+      } else {
+        return 1; // No patients yet
+      }
+    } catch (e) {
+      print('Error getting last serial number: $e');
+      return 1;
+    }
   }
 }

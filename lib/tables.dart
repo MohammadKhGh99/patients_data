@@ -46,8 +46,33 @@ class Patient {
   // Factory constructor to create a Patient from a map
   Map<String, String?> toMap() {
     return {
-      'سنة_الرقم_التسلسلي': serialNumberYear,
+      'السنة': serialNumberYear,
       'الرقم_التسلسلي': serialNumber,
+      'الإسم_الثلاثي': fullName,
+      'الإسم_الشخصي': firstName,
+      'إسم_الأب': middleName,
+      'إسم_العائلة': lastName,
+      'رقم_الهوية': id,
+      'الجنس': gender,
+      'الحالة_الإجتماعية': maritalStatus,
+      'العمر': age,
+      'أولاد': children,
+      'صلاة': prayer,
+      'صحة': health,
+      'العمل': work,
+      'المرافق': companion,
+      'البلد': city,
+      'الهاتف': phoneNumber,
+      'وصف_الحالة': description,
+      'التشخيص': diagnosis,
+      'العلاج': treatment,
+    };
+  }
+
+  Map<String, String?> toMapForInsertion() {
+    return {
+      'السنة': serialNumberYear,
+      // 'الرقم_التسلسلي': serialNumber,
       'الإسم_الثلاثي': fullName,
       'الإسم_الشخصي': firstName,
       'إسم_الأب': middleName,
@@ -71,8 +96,8 @@ class Patient {
 
   static Patient fromMap(Map<String, Object?> map) {
     return Patient(
-      serialNumberYear: map['سنة_الرقم_التسلسلي'] as String?,
-      serialNumber: map['الرقم_التسلسلي'] as String?,
+      serialNumberYear: map['السنة'] as String?,
+      serialNumber: map['الرقم_التسلسلي'].toString() as String?,
       fullName: map['الإسم_الثلاثي'] as String?,
       firstName: map['الإسم_الشخصي'] as String?,
       middleName: map['إسم_الأب'] as String?,

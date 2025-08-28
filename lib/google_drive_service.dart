@@ -119,79 +119,108 @@ class GoogleDriveService {
     }
   }
 
-  // Upload database to Google Drive
+  // Upload database to Google Drive (simplified version)
   static Future<bool> uploadDatabase() async {
     try {
       if (_driveApi == null) {
-        if (EnvConfig.debugMode) {
-          print('No Drive API available, signing in...');
-        }
         bool signedIn = await signInToGoogle();
-        if (!signedIn) {
-          print('Sign-in failed, cannot upload');
-          return false;
-        }
+        if (!signedIn) return false;
       }
 
-      if (EnvConfig.debugMode) {
-        print('Starting database upload...');
-      }
-
-      // Get the database file
+      // Get database file
       final Database db = await DatabaseHelper.database;
-      final String dbPath = db.path;
-      final File dbFile = File(dbPath);
+      final File dbFile = File(db.path);
 
       if (!await dbFile.exists()) {
-        print('Database file not found at: $dbPath');
+        print('Database file not found');
         return false;
       }
 
-      print('Database file found, size: ${await dbFile.length()} bytes');
-
-      // Read database file
       final Uint8List dbBytes = await dbFile.readAsBytes();
-      print('Database file read successfully');
-
-      // Get or create backup folder
       final List<String> folderIds = await _getOrCreateBackupFolder();
-      if (folderIds.isEmpty) {
-        print('Failed to create/find backup folder');
-        return false;
-      }
 
-      // Create file metadata
-      final String fileName =
-          'patients_database_${DateTime.now().millisecondsSinceEpoch}.db';
-      final drive.File fileMetadata =
-          drive.File()
-            ..name = fileName
-            ..description =
-                'Patients database backup - ${DateTime.now().toIso8601String()}'
-            ..parents = folderIds;
+      if (folderIds.isEmpty) return false;
 
-      print('Uploading file: $fileName to folder: ${folderIds.first}');
-
-      // Upload file
       final drive.Media media = drive.Media(
         Stream.fromIterable([dbBytes]),
         dbBytes.length,
         contentType: 'application/x-sqlite3',
       );
 
-      final drive.File uploadedFile = await _driveApi!.files.create(
-        fileMetadata,
-        uploadMedia: media,
+      // Upload with timestamp for backup
+      await _uploadFile(
+        fileName: 'patients_backup_${DateTime.now().toIso8601String()}.db',
+        media: media,
+        folderIds: folderIds,
+        description: 'Backup - ${DateTime.now().toIso8601String()}',
+      );
+
+      // Upload/update main file
+      await _uploadOrUpdateFile(
+        fileName: 'patients.db',
+        media: media,
+        folderIds: folderIds,
+        description: 'Main database file - ${DateTime.now().toIso8601String()}',
       );
 
       print('✅ Database uploaded successfully!');
-      print('File ID: ${uploadedFile.id}');
-      print('File Name: ${uploadedFile.name}');
       return true;
     } catch (e) {
       print('❌ Error uploading database: $e');
-      print('Error details: ${e.toString()}');
       return false;
+    }
+  }
+
+  // Helper method to upload a new file
+  static Future<drive.File> _uploadFile({
+    required String fileName,
+    required drive.Media media,
+    required List<String> folderIds,
+    required String description,
+  }) async {
+    final drive.File fileMetadata =
+        drive.File()
+          ..name = fileName
+          ..description = description
+          ..parents = folderIds;
+
+    return await _driveApi!.files.create(fileMetadata, uploadMedia: media);
+  }
+
+  // Helper method to upload or update a file
+  static Future<drive.File> _uploadOrUpdateFile({
+    required String fileName,
+    required drive.Media media,
+    required List<String> folderIds,
+    required String description,
+  }) async {
+
+    drive.File? existingFile = await _findFileInFolder(
+      folderIds.first,
+      fileName,
+    );
+  
+    if (existingFile != null) {
+      // Update existing file
+      final String fileId = existingFile.id!;
+      print('Updating existing file: $fileName');
+
+      return await _driveApi!.files.update(
+        drive.File()..id = fileId..description = description,
+        fileId,
+        uploadMedia: media,
+      );
+    } else {
+      // Create new file
+      print('Creating new file: $fileName');
+
+      final drive.File fileMetadata =
+          drive.File()
+            ..name = fileName
+            ..description = description
+            ..parents = folderIds;
+
+      return await _driveApi!.files.create(fileMetadata, uploadMedia: media);
     }
   }
 
@@ -307,6 +336,27 @@ class GoogleDriveService {
     await _googleSignIn?.signOut();
     _driveApi = null;
     print('Signed out from Google');
+  }
+
+  // Check if a file exists in Google Drive
+  static Future<drive.File?> _findFileInFolder(
+    String folderIds,
+    String fileName,
+  ) async {
+    try {
+      final drive.FileList files = await _driveApi!.files.list(
+        q: "'$folderIds' in parents and name='$fileName' and trashed=false",
+        pageSize: 1,
+      );
+
+      if (files.files?.isNotEmpty ?? false) {
+        return files.files!.first;
+      }
+      return null;
+    } catch (e) {
+      print('Error searching for file: $e');
+      return null;
+    }
   }
 }
 

@@ -19,9 +19,9 @@ Widget buildTextField(
     textInputAction: textInputAction,
     decoration: InputDecoration(
       labelText: labelName,
-      labelStyle: GoogleFonts.notoNaskhArabic(fontSize: 20, color: Colors.grey),
+      labelStyle: GoogleFonts.notoNaskhArabic(fontSize: 16, color: Colors.grey),
       floatingLabelStyle: GoogleFonts.notoNaskhArabic(
-        fontSize: 20,
+        fontSize: 16,
         color: Colors.black,
       ),
       alignLabelWithHint: true,
@@ -32,7 +32,7 @@ Widget buildTextField(
       counterText: '',
     ),
     textAlign: TextAlign.right,
-    style: GoogleFonts.notoNaskhArabic(color: Colors.black, fontSize: 20),
+    style: GoogleFonts.notoNaskhArabic(color: Colors.black, fontSize: 16),
     controller: controller,
     maxLength: maxLength,
     maxLines: maxLines,
@@ -48,7 +48,7 @@ Widget buildTextField(
 Widget buildDropdownField(
   String labelName,
   List<String> items, {
-  double fontSize = 20,
+  double fontSize = 16,
   String? selectedValue,
   ValueChanged<String?>? onChanged,
   }) {
@@ -73,7 +73,7 @@ Widget buildDropdownField(
     decoration: InputDecoration(
       labelText: labelName,
       labelStyle: GoogleFonts.notoNaskhArabic(
-        fontSize: 20,
+        fontSize: 16,
         color: Colors.black,
       ),
       alignLabelWithHint: true,
