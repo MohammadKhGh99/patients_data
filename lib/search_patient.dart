@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:patients_data/database_helper.dart';
 import 'package:patients_data/tables.dart';
 import 'helpers.dart';
+import 'constants.dart';
 
 class SearchPatientPage extends StatefulWidget {
   final Function(int, {List<Patient?>? patients, Patient? selectedPatient})
@@ -15,7 +16,7 @@ class SearchPatientPage extends StatefulWidget {
 }
 
 class _SearchPatientPageState extends State<SearchPatientPage> {
-  String _selectedSearchMethod = 'الإسم الشخصي';
+  String _selectedSearchMethod = firstNameText;
 
   // Define a controller for the search TextField
   // This controller can be used to retrieve the text input by the user
@@ -65,18 +66,22 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
                     null,
                     _searchFocusNode,
                     1,
-                    _selectedSearchMethod == 'الإسم الشخصي واسم الأب' ||
-                            _selectedSearchMethod == 'الإسم الشخصي واسم العائلة'
+                    _selectedSearchMethod ==
+                                '$firstNameText و$middleNameText' ||
+                            _selectedSearchMethod ==
+                                '$firstNameText و$lastNameText'
                         ? TextInputAction.next
                         : TextInputAction.done,
                     _searchController,
                   ),
                   const SizedBox(height: 20),
                   Visibility(
-                    visible: _selectedSearchMethod == 'الإسم الشخصي واسم الأب',
+                    visible:
+                        _selectedSearchMethod ==
+                        '$firstNameText و$middleNameText',
                     child: buildTextField(
                       context,
-                      'اسم الأب',
+                      middleNameText,
                       15,
                       TextInputType.text,
                       null,
@@ -88,10 +93,11 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
                   ),
                   Visibility(
                     visible:
-                        _selectedSearchMethod == 'الإسم الشخصي واسم العائلة',
+                        _selectedSearchMethod ==
+                        '$firstNameText و$lastNameText',
                     child: buildTextField(
                       context,
-                      'اسم العائلة',
+                      lastNameText,
                       15,
                       TextInputType.text,
                       null,
@@ -105,12 +111,12 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
                   buildDropdownField(
                     'طريقة البحث',
                     [
-                      'الإسم الشخصي',
-                      'الإسم الشخصي واسم الأب',
-                      'الإسم الشخصي واسم العائلة',
-                      'اسم العائلة',
-                      'الإسم الثلاثي',
-                      'رقم الهوية',
+                      firstNameText,
+                      '$firstNameText و$middleNameText',
+                      '$firstNameText و$lastNameText',
+                      lastNameText,
+                      fullNameText,
+                      idNumberText,
                     ],
                     fontSize: 16,
                     selectedValue: _selectedSearchMethod,
@@ -127,9 +133,10 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
 
                       List<Patient?>? searchResults;
 
-                      if (_selectedSearchMethod == 'الإسم الشخصي واسم الأب' ||
+                      if (_selectedSearchMethod ==
+                              '$firstNameText و$middleNameText' ||
                           _selectedSearchMethod ==
-                              'الإسم الشخصي واسم العائلة') {
+                              '$firstNameText و$lastNameText') {
                         searchResults = await DatabaseHelper.getPatients(
                           _selectedSearchMethod,
                           _searchController.text,

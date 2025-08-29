@@ -1,6 +1,11 @@
+import 'dart:io';
+
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'tables.dart';
+import 'constants.dart';
 
 class DatabaseHelper {
   static Database? _database;
@@ -43,8 +48,7 @@ class DatabaseHelper {
       )
     ''');
 
-
-     await db.execute('''
+    await db.execute('''
       INSERT INTO sqlite_sequence (name, seq) VALUES ('patients', 1)
     ''');
 
@@ -98,7 +102,7 @@ class DatabaseHelper {
       'patients',
       patient.toMapForInsertion(),
       // Ensure that the Patient has a matching id.
-      where: 'الرقم_التسلسلي = ? AND السنة = ?',
+      where: '$serialNumber = ? AND $yearText = ?',
       // Pass the Patient's id as a whereArg to prevent SQL injection.
       whereArgs: [patient.serialNumber, patient.serialNumberYear],
     );
@@ -112,17 +116,17 @@ class DatabaseHelper {
     List<Patient?>? patients = [];
     if (value == null || value == "") {
       patients = await getAllPatients();
-    } else if (searchMethod == 'الإسم الشخصي') {
+    } else if (searchMethod == firstNameText) {
       patients = await _getPatientsByFirstName(value);
-    } else if (searchMethod == 'الإسم الشخصي واسم الأب') {
+    } else if (searchMethod == '$firstNameText و$middleNameText') {
       patients = await _getPatientsByFirstMiddleName(value, middleOrLast);
-    } else if (searchMethod == 'الإسم الشخصي واسم العائلة') {
+    } else if (searchMethod == '$firstNameText و$lastNameText') {
       patients = await _getPatientsByFirstLastName(value, middleOrLast);
-    } else if (searchMethod == 'اسم العائلة') {
+    } else if (searchMethod == lastNameText) {
       patients = await _getPatientsByLastName(value);
-    } else if (searchMethod == 'الإسم الثلاثي') {
+    } else if (searchMethod == fullNameText) {
       patients = await _getPatientsByFullName(value);
-    } else if (searchMethod == 'رقم الهوية') {
+    } else if (searchMethod == idNumberText) {
       patients = await _getPatientsById(value);
     } else {
       return null;
@@ -140,7 +144,7 @@ class DatabaseHelper {
     // Query the table for all patients by first name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
-      where: 'الإسم_الشخصي = ?',
+      where: '$firstName = ?',
       whereArgs: [firstName],
     );
 
@@ -148,7 +152,8 @@ class DatabaseHelper {
   }
 
   static Future<List<Patient?>> _getPatientsByFirstMiddleName(
-    String firstName, String? middleName,
+    String firstName,
+    String? middleName,
   ) async {
     // Get a reference to the database.
     final db = await database;
@@ -157,7 +162,7 @@ class DatabaseHelper {
     // Query the table for all patients by first middle name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
-      where: 'الإسم_الشخصي = ? AND إسم_الأب = ?',
+      where: '$firstName = ? AND $middleName = ?',
       whereArgs: names,
     );
 
@@ -165,7 +170,8 @@ class DatabaseHelper {
   }
 
   static Future<List<Patient?>> _getPatientsByFirstLastName(
-    String firstName, String? lastName,
+    String firstName,
+    String? lastName,
   ) async {
     // Get a reference to the database.
     final db = await database;
@@ -174,7 +180,7 @@ class DatabaseHelper {
     // Query the table for all patients by first last name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
-      where: 'الإسم_الشخصي = ? AND إسم_العائلة = ?',
+      where: '$firstName = ? AND $lastName = ?',
       whereArgs: names,
     );
 
@@ -188,7 +194,7 @@ class DatabaseHelper {
     // Query the table for all patients by last name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
-      where: 'إسم_العائلة = ?',
+      where: '$lastName = ?',
       whereArgs: [lastName],
     );
 
@@ -203,7 +209,7 @@ class DatabaseHelper {
     // Query the table for all patients by full name.
     final List<Map<String, Object?>> maps = await db.query(
       'patients',
-      where: 'الإسم الثلاثي = ?',
+      where: '$fullName = ?',
       whereArgs: [fullName],
     );
 
@@ -267,6 +273,121 @@ class DatabaseHelper {
     } catch (e) {
       print('Error getting last serial number: $e');
       return 1;
+    }
+  }
+
+  // Get column names from the patients table
+  static Future<List<String>> _getColumnNames() async {
+    try {
+      final db = await database;
+
+      final List<Map<String, Object?>> result = await db.rawQuery(
+        'PRAGMA table_info(patients)',
+      );
+
+      // Extract column names from the result
+      List<String> columnNames =
+          result.map((row) => row['name'] as String).toList();
+
+      print('Column names: $columnNames');
+      return columnNames;
+    } catch (e) {
+      print('Error getting column names: $e');
+      return [];
+    }
+  }
+
+  static Future<String> generateCSVFromDatabase() async {
+    try {
+      final patients = await getAllPatients();
+      final csvBuffer = StringBuffer();
+
+      // Add headers
+      List<String> headers = await _getColumnNames();
+      csvBuffer.writeln(headers.join(','));
+
+      // Add patient data
+      for (var patient in patients) {
+        csvBuffer.writeln(patient.toCsvRow());
+      }
+
+      // ✅ Save to both app directory and main storage
+      await _saveCSVToMultipleLocations(csvBuffer.toString());
+
+      return csvBuffer.toString();
+    } catch (e) {
+      print('Error generating CSV: $e');
+      return '';
+    }
+  }
+
+  // ✅ Helper method to save CSV to multiple locations
+  static Future<void> _saveCSVToMultipleLocations(String csvContent) async {
+    try {
+      // 1. Save to app documents (existing functionality)
+      final appDirectory = await getApplicationDocumentsDirectory();
+      final appPath = '${appDirectory.path}/patients.csv';
+      final appFile = File(appPath);
+      await appFile.writeAsString(csvContent);
+      print('✅ CSV saved to app directory: $appPath');
+
+      // 2. ✅ Save to main storage Documents folder
+      final mainStorageSuccess = await _copyCSVToMainStorage(csvContent);
+      if (mainStorageSuccess) {
+        print('✅ CSV copied to main storage Documents folder');
+      } else {
+        print('❌ Failed to copy CSV to main storage');
+      }
+    } catch (e) {
+      print('❌ Error saving CSV: $e');
+    }
+  }
+
+  // ✅ Copy CSV to main storage Documents folder
+  static Future<bool> _copyCSVToMainStorage(String csvContent) async {
+    try {
+      // Request storage permission
+      // Note: Add permission_handler dependency if not already added
+      // final permission = await Permission.storage.request();
+      // if (!permission.isGranted) {
+      //   print('❌ Storage permission denied');
+      //   return false;
+      // }
+
+      // Get external storage directory
+      Directory? externalDir = await getExternalStorageDirectory();
+      if (externalDir == null) {
+        print('❌ External storage not available');
+        return false;
+      }
+      print(externalDir.path);
+
+      // Navigate to main storage root (removes /Android/data/... part)
+      String mainStoragePath = externalDir.path.split('Android')[0];
+
+      // Create Documents folder path
+      String documentsPath = '${mainStoragePath}Documents';
+      Directory documentsDir = Directory(documentsPath);
+
+      // Create Documents directory if it doesn't exist
+      if (!await documentsDir.exists()) {
+        await documentsDir.create(recursive: true);
+      }
+
+      // Create timestamp for unique filename
+      final timestamp =
+          DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+      final fileName = 'patients.csv';
+
+      // Save CSV file
+      final csvFile = File('$documentsPath/$fileName');
+      await csvFile.writeAsString(csvContent);
+
+      print('✅ CSV saved to main storage: ${csvFile.path}');
+      return true;
+    } catch (e) {
+      print('❌ Error copying CSV to main storage: $e');
+      return false;
     }
   }
 }

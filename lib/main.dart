@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:patients_data/add_patient.dart';
+import 'package:patients_data/database_helper.dart';
 import 'package:patients_data/search_patient.dart';
 import 'package:patients_data/search_results.dart';
 import 'package:patients_data/tables.dart';
@@ -8,6 +9,8 @@ import 'google_drive_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'email_service.dart';
 import 'env_config.dart';
+import 'constants.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +34,7 @@ class MyApp extends StatelessWidget {
       ),
       home: const MyHomePage(
         title: Text(
-          'المعالجة بالرقية الشرعية',
+          backupFolderName,
           style: TextStyle(
             fontSize: 30,
             fontFamily: 'Traditional Arabic',
@@ -96,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
                   Text(
-                    '...جاري التحميل',
+                    loadingText,
                     style: GoogleFonts.scheherazadeNew(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -181,7 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         leading: IconButton(
           onPressed: () {
-            print('Back button pressed');
+            // print('Back button pressed');
             backButtonPressed = true;
             setState(() {
               if (indexesArray.length <= 1) {
@@ -212,7 +215,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Column(
                   children: <Widget>[
                     const Text(
-                      'بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم',
+                      bismillahText,
                       style: TextStyle(
                         fontSize: 30,
                         fontFamily: 'Traditional Arabic',
@@ -220,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                     const Text(
-                      'بطاقة علاج',
+                      patientCardTitle,
                       style: TextStyle(
                         fontSize: 25,
                         fontFamily: 'Traditional Arabic',
@@ -295,7 +298,7 @@ class _MainMenuState extends State<MainMenuPage> {
                     SizedBox(width: 20),
                     Expanded(
                       child: Text(
-                        'جاري إرسال النسخة الاحتياطية بالإيميل...',
+                        emailBackup,
                         style: GoogleFonts.scheherazadeNew(fontSize: 16),
                       ),
                     ),
@@ -324,23 +327,21 @@ class _MainMenuState extends State<MainMenuPage> {
                     size: 50,
                   ),
                   title: Text(
-                    success ? 'تم الإرسال بنجاح' : 'فشل في الإرسال',
+                    success ? sendingSuccess : sendingFailure,
                     style: GoogleFonts.scheherazadeNew(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   content: Text(
-                    success
-                        ? 'تم إرسال النسخة الاحتياطية بالإيميل بنجاح'
-                        : 'حدث خطأ أثناء إرسال الإيميل. تأكد من إعدادات الإيميل في ملف .env',
+                    success ? emailBackupSuccess : emailBackupFailure,
                     style: GoogleFonts.scheherazadeNew(fontSize: 16),
                   ),
                   actions: [
                     ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: Text(
-                        'موافق',
+                        acceptText,
                         style: GoogleFonts.scheherazadeNew(fontSize: 16),
                       ),
                     ),
@@ -350,7 +351,7 @@ class _MainMenuState extends State<MainMenuPage> {
         );
       }
     } catch (e) {
-      print('Email error: $e');
+      // print('Email error: $e');
       // Close loading dialog if still open
       if (mounted) Navigator.of(context).pop();
 
@@ -383,13 +384,16 @@ class _MainMenuState extends State<MainMenuPage> {
             (context) => Directionality(
               textDirection: TextDirection.rtl,
               child: AlertDialog(
-                content: Row(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircularProgressIndicator(strokeWidth: 2),
-                    SizedBox(width: 20),
+                    CircularProgressIndicator(),
+                    SizedBox(height: 20),
                     Text(
-                      'جاري الرفع إلى جوجل درايف...',
-                      style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                      googleDriveLoadingBackup,
+                      style: GoogleFonts.scheherazadeNew(fontSize: 12),
+                      softWrap: true,
                     ),
                   ],
                 ),
@@ -416,23 +420,21 @@ class _MainMenuState extends State<MainMenuPage> {
                     size: 50,
                   ),
                   title: Text(
-                    success ? 'تم الرفع بنجاح' : 'فشل في الرفع',
+                    success ? uploadedSuccessfully : uploadedFailure,
                     style: GoogleFonts.scheherazadeNew(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   content: Text(
-                    success
-                        ? 'تم رفع قاعدة البيانات إلى جوجل درايف بنجاح'
-                        : 'حدث خطأ أثناء رفع قاعدة البيانات',
+                    success ? uploadedSuccessfully : uploadedFailure,
                     style: GoogleFonts.scheherazadeNew(fontSize: 16),
                   ),
                   actions: [
                     ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: Text(
-                        'موافق',
+                        acceptText,
                         style: GoogleFonts.scheherazadeNew(fontSize: 16),
                       ),
                     ),
@@ -465,21 +467,21 @@ class _MainMenuState extends State<MainMenuPage> {
               child: AlertDialog(
                 icon: Icon(Icons.warning, color: Colors.orange, size: 50),
                 title: Text(
-                  'تأكيد الاستعادة',
+                  confirmRecovery,
                   style: GoogleFonts.scheherazadeNew(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 content: Text(
-                  'سيتم استبدال قاعدة البيانات الحالية بالنسخة الاحتياطية من جوجل درايف. هل أنت متأكد؟',
+                  checkUserRecovery,
                   style: GoogleFonts.scheherazadeNew(fontSize: 16),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     child: Text(
-                      'إلغاء',
+                      declineText,
                       style: GoogleFonts.scheherazadeNew(fontSize: 16),
                     ),
                   ),
@@ -489,7 +491,7 @@ class _MainMenuState extends State<MainMenuPage> {
                       backgroundColor: Colors.orange,
                     ),
                     child: Text(
-                      'نعم، استعادة',
+                      acceptRecovery,
                       style: GoogleFonts.scheherazadeNew(
                         fontSize: 16,
                         color: Colors.white,
@@ -512,13 +514,16 @@ class _MainMenuState extends State<MainMenuPage> {
               (context) => Directionality(
                 textDirection: TextDirection.rtl,
                 child: AlertDialog(
-                  content: Row(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(width: 20),
                       Text(
-                        'جاري الاستعادة من جوجل درايف...',
-                        style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                        googleDriveLoadingRecovery,
+                        style: GoogleFonts.scheherazadeNew(fontSize: 12),
+                        softWrap: true,
                       ),
                     ],
                   ),
@@ -546,7 +551,7 @@ class _MainMenuState extends State<MainMenuPage> {
                     size: 50,
                   ),
                   title: Text(
-                    success ? 'تمت الاستعادة بنجاح' : 'فشل في الاستعادة',
+                    success ? recoverySuccess : recoveryFailure,
                     style: GoogleFonts.scheherazadeNew(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -554,15 +559,15 @@ class _MainMenuState extends State<MainMenuPage> {
                   ),
                   content: Text(
                     success
-                        ? 'تم استعادة قاعدة البيانات من جوجل درايف بنجاح'
-                        : 'حدث خطأ أثناء استعادة قاعدة البيانات',
+                        ? googleDriveRecoverySuccess
+                        : googleDriveRecoveryFailure,
                     style: GoogleFonts.scheherazadeNew(fontSize: 16),
                   ),
                   actions: [
                     ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: Text(
-                        'موافق',
+                        acceptText,
                         style: GoogleFonts.scheherazadeNew(fontSize: 16),
                       ),
                     ),
@@ -579,6 +584,81 @@ class _MainMenuState extends State<MainMenuPage> {
         );
       }
     }
+  }
+
+  void _convertDatabaseToCSV() async {
+    // show dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 20),
+                    Text(
+                      csvLoadingConversion,
+                      style: GoogleFonts.scheherazadeNew(fontSize: 12),
+                      softWrap: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      );
+    }
+
+    final csvData = await DatabaseHelper.generateCSVFromDatabase();
+    bool success = csvData.isNotEmpty;
+
+    // Close loading dialog
+    if (mounted) Navigator.of(context).pop();
+
+    // Show result
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                icon: Icon(
+                  success ? Icons.check_circle : Icons.error,
+                  color: success ? Colors.green : Colors.red,
+                  size: 50,
+                ),
+                title: Text(
+                  success ? csvConversionSuccess : csvConversionFailure,
+                  style: GoogleFonts.scheherazadeNew(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: Text(
+                  success ? csvConversionSuccess : csvConversionFailure,
+                  style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      acceptText,
+                      style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      );
+    }
+
+    // print('CSV Data: $csvData');
   }
 
   @override
@@ -617,12 +697,12 @@ class _MainMenuState extends State<MainMenuPage> {
         const SizedBox(height: 50),
         ElevatedButton.icon(
           onPressed: () {
-            print('إضافة مريض جديد');
+            // print('إضافة مريض جديد');
             widget.onButtonPressed(1);
           },
           icon: const Icon(Icons.add, color: Colors.black),
           label: Text(
-            'إضافة مريض جديد',
+            addNewPatient,
             style: GoogleFonts.scheherazadeNew(
               fontSize: 25,
               color: Colors.black,
@@ -632,7 +712,7 @@ class _MainMenuState extends State<MainMenuPage> {
         const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: () {
-            print('ابحث عن مريض');
+            // print('ابحث عن مريض');
             widget.onButtonPressed(2);
           },
           icon: const Icon(Icons.search, color: Colors.black),
@@ -647,11 +727,11 @@ class _MainMenuState extends State<MainMenuPage> {
         const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: _uploadToGoogleDrive,
-          icon: const Icon(Icons.cloud_upload, color: Colors.green),
+          icon: const FaIcon(FontAwesomeIcons.googleDrive, color: Colors.green),
           label: Text(
-            'حفظ في جوجل درايف',
+            saveToGoogleDrive,
             style: GoogleFonts.scheherazadeNew(
-              fontSize: 20,
+              fontSize: 16,
               color: Colors.green,
             ),
           ),
@@ -659,25 +739,23 @@ class _MainMenuState extends State<MainMenuPage> {
         const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: _downloadFromGoogleDrive,
-          icon: const Icon(Icons.cloud_download, color: Colors.green),
+          icon: const FaIcon(FontAwesomeIcons.googleDrive, color: Colors.green),
           label: Text(
-            'استعادة من جوجل درايف',
+            recoverFromGoogleDrive,
             style: GoogleFonts.scheherazadeNew(
-              fontSize: 20,
+              fontSize: 16,
               color: Colors.green,
             ),
           ),
         ),
         const SizedBox(height: 10),
         ElevatedButton.icon(
-          onPressed: () {
-            print('تحويل إلى ملف اكسل');
-          },
-          icon: const Icon(Icons.swap_horiz, color: Colors.green),
+          onPressed: _convertDatabaseToCSV,
+          icon: const FaIcon(FontAwesomeIcons.fileExcel, color: Colors.green),
           label: Text(
-            'تحويل إلى ملف اكسل',
+            convertToExcel,
             style: GoogleFonts.scheherazadeNew(
-              fontSize: 20,
+              fontSize: 16,
               color: Colors.green,
             ),
           ),
@@ -685,11 +763,11 @@ class _MainMenuState extends State<MainMenuPage> {
         const SizedBox(height: 10),
         ElevatedButton.icon(
           onPressed: _sendDatabaseByEmail,
-          icon: const Icon(Icons.backup, color: Colors.blue),
+          icon: const FaIcon(FontAwesomeIcons.envelope, color: Colors.blue),
           label: Text(
-            'إرسال نسخة احتياطية بالإيميل',
+            sendToEmail,
             style: GoogleFonts.scheherazadeNew(
-              fontSize: 20,
+              fontSize: 16,
               color: Colors.blue,
             ),
           ),
@@ -701,17 +779,18 @@ class _MainMenuState extends State<MainMenuPage> {
             final success = await GoogleDriveService.signInToGoogle();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  success ? 'تم تسجيل الدخول بنجاح' : 'فشل تسجيل الدخول',
-                ),
+                content: Text(success ? loginSuccess : loginFailed),
                 backgroundColor: success ? Colors.green : Colors.red,
               ),
             );
             _checkSignInStatus();
           },
-          icon: const Icon(Icons.login, color: Colors.purple),
+          icon: const FaIcon(
+            FontAwesomeIcons.google,
+            color: Colors.purple,
+          ), // ✅ Google icon
           label: Text(
-            'اختبار تسجيل الدخول Google',
+            googleLogin,
             style: GoogleFonts.scheherazadeNew(
               fontSize: 16,
               color: Colors.purple,
@@ -722,14 +801,14 @@ class _MainMenuState extends State<MainMenuPage> {
         ElevatedButton.icon(
           onPressed: () async {
             // Check environment configuration
-            print('=== DEBUG INFO ===');
-            print('Client ID from env: ${EnvConfig.googleOAuthClientId}');
-            print('Has Google Credentials: ${EnvConfig.hasGoogleCredentials}');
-            print('Client ID length: ${EnvConfig.googleOAuthClientId.length}');
+            // print('=== DEBUG INFO ===');
+            // print('Client ID from env: ${EnvConfig.googleOAuthClientId}');
+            // print('Has Google Credentials: ${EnvConfig.hasGoogleCredentials}');
+            // print('Client ID length: ${EnvConfig.googleOAuthClientId.length}');
             // print('Client ID starts with: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...');
 
             // Check package name
-            print('Expected package: com.example.patients_data');
+            // print('Expected package: com.example.patients_data');
 
             // Show dialog with info
             showDialog(

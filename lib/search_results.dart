@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:patients_data/tables.dart';
 import 'helpers.dart';
+import 'constants.dart';
 
 class SearchResultsPage extends StatefulWidget {
   final Function(int, {List<Patient?>? patients, Patient? selectedPatient})
@@ -19,7 +20,7 @@ class SearchResultsPage extends StatefulWidget {
 }
 
 class _SearchResultsPageState extends State<SearchResultsPage> {
-  String selectedResult = '';
+  String selectedResult = empty;
 
   late Map<String, Patient> searchResults;
 
@@ -41,11 +42,12 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     searchResults = {};
     for (var patient in widget.patients) {
       if (patient != null) {
-        searchResults["${patient.serialNumberYear}: ${patient.fullName} - ${patient.city}"] =
+        searchResults["${patient.serialNumberYear}-${patient.serialNumber}: ${patient.fullName} - ${patient.city}"] =
             patient;
       }
     }
-    selectedResult = searchResults.isNotEmpty ? searchResults.keys.first : '';
+    selectedResult =
+        searchResults.isNotEmpty ? searchResults.keys.first : empty;
   }
 
   void _showNoResultsAndGoBack() {
@@ -58,7 +60,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           child: AlertDialog(
             icon: const Icon(Icons.search_off, color: Colors.orange, size: 50),
             title: Text(
-              'لا توجد نتائج',
+              noResults,
               style: GoogleFonts.scheherazadeNew(
                 fontSize: 20,
                 color: Colors.orange,
@@ -66,7 +68,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               ),
             ),
             content: Text(
-              'لم يتم العثور على أي مريض يطابق معايير البحث',
+              noResultsV,
               style: GoogleFonts.scheherazadeNew(fontSize: 16),
             ),
             actions: [
@@ -76,7 +78,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   widget.onButtonPressed(-1); // Go back to search
                 },
                 child: Text(
-                  'العودة للبحث',
+                  returnToSearch,
                   style: GoogleFonts.scheherazadeNew(fontSize: 16),
                 ),
               ),
@@ -123,7 +125,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     },
                     icon: const Icon(Icons.search, color: Colors.black),
                     label: Text(
-                      'تم',
+                      doneText,
                       style: GoogleFonts.scheherazadeNew(
                         fontSize: 20,
                         color: Colors.black,
@@ -142,13 +144,14 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
   Widget _buildResultsContent() {
     return buildDropdownField(
-      "نتائج البحث:",
+      searchResultsText,
       searchResults.keys.toList(),
-      fontSize: 16,
-      selectedValue: searchResults.isNotEmpty ? searchResults.keys.first : '',
+      fontSize: 14,
+      selectedValue:
+          searchResults.isNotEmpty ? searchResults.keys.first : empty,
       onChanged: (String? value) {
         setState(() {
-          selectedResult = value ?? '';
+          selectedResult = value ?? empty;
         });
       },
     );

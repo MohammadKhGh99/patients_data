@@ -123,4 +123,92 @@ class Patient {
   String toString() {
     return 'Patient{serialNumberYear: $serialNumberYear, serialNumber: $serialNumber, fullName: $fullName, firstName: $firstName, middleName: $middleName, lastName: $lastName, id: $id, gender: $gender, maritalStatus: $maritalStatus, age: $age, children: $children, prayer: $prayer, health: $health, work: $work, companion: $companion, city: $city, phoneNumber: $phoneNumber, description: $description, diagnosis: $diagnosis, treatment: $treatment}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is Patient &&
+        other.serialNumberYear == serialNumberYear &&
+        other.serialNumber == serialNumber &&
+        other.fullName == fullName &&
+        other.firstName == firstName &&
+        other.middleName == middleName &&
+        other.lastName == lastName &&
+        other.id == id &&
+        other.gender == gender &&
+        other.maritalStatus == maritalStatus &&
+        other.age == age &&
+        other.children == children &&
+        other.prayer == prayer &&
+        other.health == health &&
+        other.work == work &&
+        other.companion == companion &&
+        other.city == city &&
+        other.phoneNumber == phoneNumber &&
+        other.description == description &&
+        other.diagnosis == diagnosis &&
+        other.treatment == treatment;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      serialNumberYear,
+      serialNumber,
+      fullName,
+      firstName,
+      middleName,
+      lastName,
+      id,
+      gender,
+      maritalStatus,
+      age,
+      children,
+      prayer,
+      health,
+      work,
+      companion,
+      city,
+      phoneNumber,
+      description,
+      diagnosis,
+      treatment,
+    );
+  }
+
+  // ✅ Fix: Return a properly formatted CSV row string
+  String toCsvRow() {
+    List<String> rowData = [
+      serialNumberYear ?? '',
+      serialNumber ?? '',
+      fullName ?? '',
+      firstName ?? '',
+      middleName ?? '',
+      lastName ?? '',
+      id ?? '',
+      gender ?? '',
+      maritalStatus ?? '',
+      age ?? '',
+      children ?? '',
+      prayer ?? '',
+      health ?? '',
+      work ?? '',
+      companion ?? '',
+      city ?? '',
+      phoneNumber ?? '',
+      description ?? '',
+      diagnosis ?? '',
+      treatment ?? '',
+    ];
+
+    // // ✅ Escape commas and quotes, then join with commas
+    // List<String> escapedData =
+    //     rowData.map((cell) {
+    //       String cleanCell = cell.replaceAll(',', ';').replaceAll('"', '""');
+    //       return '"$cleanCell"'; // Wrap in quotes for CSV safety
+    //     }).toList();
+    print(rowData); // Debug: Check the escaped data format
+    return rowData.join(','); // ✅ Return as comma-separated string
+  }
 }

@@ -7,9 +7,13 @@ import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
 import 'database_helper.dart';
 import 'env_config.dart';
+import 'package:path/path.dart';
 
 class GoogleDriveService {
-  static const List<String> _scopes = [drive.DriveApi.driveFileScope];
+  static const List<String> _scopes = [
+    drive.DriveApi.driveFileScope,
+    drive.DriveApi.driveAppdataScope,
+  ];
 
   static GoogleSignIn? _googleSignIn;
   static drive.DriveApi? _driveApi;
@@ -123,47 +127,52 @@ class GoogleDriveService {
   static Future<bool> uploadDatabase() async {
     try {
       if (_driveApi == null) {
-        bool signedIn = await signInToGoogle();
-        if (!signedIn) return false;
-      }
-
-      // Get database file
-      final Database db = await DatabaseHelper.database;
-      final File dbFile = File(db.path);
-
-      if (!await dbFile.exists()) {
-        print('Database file not found');
+        print('❌ Drive API not initialized');
         return false;
       }
 
-      final Uint8List dbBytes = await dbFile.readAsBytes();
-      final List<String> folderIds = await _getOrCreateBackupFolder();
+      final dbPath = join(await getDatabasesPath(), 'patients.db');
+      final dbFile = File(dbPath);
 
-      if (folderIds.isEmpty) return false;
+      if (!await dbFile.exists()) {
+        print('❌ Database file not found');
+        return false;
+      }
 
-      final drive.Media media = drive.Media(
-        Stream.fromIterable([dbBytes]),
-        dbBytes.length,
+      // Check if file already exists
+      final existingFiles = await _driveApi!.files.list(
+        q: "name='patients.db' and trashed=false",
+        spaces: 'drive',
+      );
+
+      // ✅ If file exists, delete it first
+      if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
+        print('Deleting existing file: patients.db');
+
+        for (var file in existingFiles.files!) {
+          await _driveApi!.files.delete(file.id!);
+        }
+      }
+
+      // ✅ Create new file
+      print('Creating new file: patients.db');
+
+      final media = drive.Media(
+        dbFile.openRead(),
+        await dbFile.length(),
         contentType: 'application/x-sqlite3',
       );
+      final List<String> folderIds = await _getOrCreateBackupFolder();
+      final fileMetadata =
+          drive.File()
+            ..name = 'patients.db'
+            ..description =
+                'Patient database backup - ${DateTime.now().toIso8601String()}'
+            ..parents = folderIds;
 
-      // Upload with timestamp for backup
-      await _uploadFile(
-        fileName: 'patients_backup_${DateTime.now().toIso8601String()}.db',
-        media: media,
-        folderIds: folderIds,
-        description: 'Backup - ${DateTime.now().toIso8601String()}',
-      );
+      await _driveApi!.files.create(fileMetadata, uploadMedia: media);
 
-      // Upload/update main file
-      await _uploadOrUpdateFile(
-        fileName: 'patients.db',
-        media: media,
-        folderIds: folderIds,
-        description: 'Main database file - ${DateTime.now().toIso8601String()}',
-      );
-
-      print('✅ Database uploaded successfully!');
+      print('✅ Database uploaded successfully');
       return true;
     } catch (e) {
       print('❌ Error uploading database: $e');
@@ -194,19 +203,20 @@ class GoogleDriveService {
     required List<String> folderIds,
     required String description,
   }) async {
-
     drive.File? existingFile = await _findFileInFolder(
       folderIds.first,
       fileName,
     );
-  
+
     if (existingFile != null) {
       // Update existing file
       final String fileId = existingFile.id!;
       print('Updating existing file: $fileName');
 
       return await _driveApi!.files.update(
-        drive.File()..id = fileId..description = description,
+        drive.File()
+          ..id = fileId
+          ..description = description,
         fileId,
         uploadMedia: media,
       );
@@ -288,7 +298,7 @@ class GoogleDriveService {
 
       // Search for existing backup folder
       final drive.FileList existingFolders = await _driveApi!.files.list(
-        q: "name='Patients_DB_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+        q: "name='المعالجة بالرقية الشرعية' and mimeType='application/vnd.google-apps.folder' and trashed=false",
       );
 
       if (existingFolders.files?.isNotEmpty ?? false) {
@@ -302,7 +312,7 @@ class GoogleDriveService {
       // Create new backup folder
       final drive.File folderMetadata =
           drive.File()
-            ..name = 'Patients_DB_Backups'
+            ..name = 'المعالجة بالرقية الشرعية'
             ..mimeType = 'application/vnd.google-apps.folder'
             ..description = 'Backup folder for Patients Database';
 
