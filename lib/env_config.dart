@@ -32,19 +32,19 @@ class EnvConfig {
   //     dotenv.env['BACKUP_FOLDER_NAME'] ?? 'Patients_DB_Backups';
 
   static void printConfig() {
-    if (debugMode) {
-      print('=== Environment Configuration ===');
-      // print('App Name: $appName');
-      // print('DB Name: $dbName');
-      // print('DB Version: $dbVersion');
-      // print('Backup Folder: $backupFolderName');
-      print('Debug Mode: $debugMode');
-      print('Google OAuth Client ID: ${googleOAuthClientId.isNotEmpty}');
-      print('Sender Email: $senderEmail');
-      print('Recipient Email: $recipientEmail');
-      print('Has Google Credentials: $hasGoogleCredentials');
-      print('Has Email Config: $hasEmailConfig');
-      print('================================');
-    }
+    // if (debugMode) {
+    //   print('=== Environment Configuration ===');
+    //   // print('App Name: $appName');
+    //   // print('DB Name: $dbName');
+    //   // print('DB Version: $dbVersion');
+    //   // print('Backup Folder: $backupFolderName');
+    //   print('Debug Mode: $debugMode');
+    //   print('Google OAuth Client ID: ${googleOAuthClientId.isNotEmpty}');
+    //   print('Sender Email: $senderEmail');
+    //   print('Recipient Email: $recipientEmail');
+    //   print('Has Google Credentials: $hasGoogleCredentials');
+    //   print('Has Email Config: $hasEmailConfig');
+    //   print('================================');
+    // }
   }
 }

@@ -31,7 +31,7 @@ void main() async {
   await GoogleDriveService.initialize();
 
   runApp(const MyApp());
-  GoogleDriveService.initialize();
+  // GoogleDriveService.initialize();
 }
 
 class MyApp extends StatelessWidget {
@@ -161,9 +161,9 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } else {
       backButtonPressed = false;
-      print('selectedIndex: $selectedIndex');
+      // print('selectedIndex: $selectedIndex');
     }
-    print('indexesArray: $indexesArray');
+    // print('indexesArray: $indexesArray');
 
     switch (selectedIndex) {
       case 0:
@@ -296,7 +296,9 @@ class _MainMenuState extends State<MainMenuPage> {
     _checkSignInStatus();
   }
 
-  Future<void> _sendDatabaseByEmail() async {
+  Future<void> _sendDatabaseByEmail(String? email) async {
+    // make a text field to make the user enter his email to send the backup to it
+
     try {
       // Show loading dialog
       showDialog(
@@ -322,46 +324,45 @@ class _MainMenuState extends State<MainMenuPage> {
             ),
       );
 
-      final success = await EmailService.sendDatabaseBackup();
+      final success = await EmailService.sendDatabaseBackup(customRecipient: email);
 
       // Close loading dialog
       if (mounted) Navigator.of(context).pop();
 
       // Show result
-      if (mounted) {
+      if (mounted) {  
         showDialog(
           context: context,
-          builder:
-              (context) => Directionality(
-                textDirection: TextDirection.rtl,
-                child: AlertDialog(
-                  icon: Icon(
-                    success ? Icons.check_circle : Icons.error,
-                    color: success ? Colors.green : Colors.red,
+          builder: (context) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              icon: Icon(
+                success ? Icons.check_circle : Icons.error,
+                color: success ? Colors.green : Colors.red,
                     size: 50,
-                  ),
-                  title: Text(
-                    success ? sendingSuccess : sendingFailure,
-                    style: GoogleFonts.scheherazadeNew(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: Text(
-                    success ? emailBackupSuccess : emailBackupFailure,
-                    style: GoogleFonts.scheherazadeNew(fontSize: 16),
-                  ),
-                  actions: [
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        acceptText,
-                        style: GoogleFonts.scheherazadeNew(fontSize: 16),
-                      ),
-                    ),
-                  ],
+              ),
+              title: Text(
+                success ? sendingSuccess : sendingFailure,
+                style: GoogleFonts.scheherazadeNew(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+              content: Text(
+                success ? emailBackupSuccess : emailBackupFailure,
+                style: GoogleFonts.scheherazadeNew(fontSize: 16),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    acceptText,
+                    style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -776,7 +777,49 @@ class _MainMenuState extends State<MainMenuPage> {
         ),
         const SizedBox(height: 10),
         ElevatedButton.icon(
-          onPressed: _sendDatabaseByEmail,
+          onPressed: () {
+            String? email;
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: Text(
+                    'أدخل بريدك الإلكتروني',
+                    style: GoogleFonts.scheherazadeNew(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: TextField(
+                    onChanged: (value) {
+                      email = value;
+                    },
+                    decoration: InputDecoration(hintText: 'ايميل'),
+                    style: GoogleFonts.scheherazadeNew(
+                      fontSize: 16,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text('إلغاء'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _sendDatabaseByEmail(email);
+                      },
+                      child: Text('إرسال'),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            // _sendDatabaseByEmail(email);
+          },
           icon: const FaIcon(FontAwesomeIcons.envelope, color: Colors.blue),
           label: Text(
             sendToEmail,

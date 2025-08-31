@@ -355,7 +355,7 @@ class DatabaseHelper {
         AppLogger.error('❌ External storage not available');
         return false;
       }
-      print(externalDir.path);
+      // print(externalDir.path);
 
       // Navigate to main storage root (removes /Android/data/... part)
       String mainStoragePath = externalDir.path.split('Android')[0];

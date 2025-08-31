@@ -11,7 +11,7 @@ class EmailService {
   // Send database backup via email
   static Future<bool> sendDatabaseBackup({String? customRecipient}) async {
     try {
-      EnvConfig.printConfig();
+      // EnvConfig.printConfig();
 
       if (!EnvConfig.hasEmailConfig) {
         AppLogger.error('Email configuration missing in .env file');

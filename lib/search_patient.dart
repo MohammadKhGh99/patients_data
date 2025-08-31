@@ -129,7 +129,7 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: () async {
-                      print('البحث عن مريض');
+                      // print('البحث عن مريض');
 
                       List<Patient?>? searchResults;
 
@@ -160,7 +160,7 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
                       //   ),
                       // );
 
-                      print(searchResults);
+                      // print(searchResults);
                       widget.onButtonPressed(3, patients: searchResults);
                     },
                     icon: const Icon(Icons.search, color: Colors.black),

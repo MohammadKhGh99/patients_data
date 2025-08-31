@@ -475,7 +475,7 @@ Support
 For support and questions:
 
 Create an issue in the repository
-Contact: [your-email@example.com]
+Contact: mohammad.gh454@gmailcom
 Acknowledgments
 Flutter team for the amazing framework
 Google Fonts for Arabic font support

@@ -8,7 +8,7 @@ class AppLogger {
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
       developer.log(
-        '${record.message}',
+        record.message,
         name: record.loggerName,
         level: record.level.value,
         error: record.error,
