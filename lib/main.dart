@@ -324,45 +324,48 @@ class _MainMenuState extends State<MainMenuPage> {
             ),
       );
 
-      final success = await EmailService.sendDatabaseBackup(customRecipient: email);
+      final success = await EmailService.sendDatabaseBackup(
+        customRecipient: email,
+      );
 
       // Close loading dialog
       if (mounted) Navigator.of(context).pop();
 
       // Show result
-      if (mounted) {  
+      if (mounted) {
         showDialog(
           context: context,
-          builder: (context) => Directionality(
-            textDirection: TextDirection.rtl,
-            child: AlertDialog(
-              icon: Icon(
-                success ? Icons.check_circle : Icons.error,
-                color: success ? Colors.green : Colors.red,
+          builder:
+              (context) => Directionality(
+                textDirection: TextDirection.rtl,
+                child: AlertDialog(
+                  icon: Icon(
+                    success ? Icons.check_circle : Icons.error,
+                    color: success ? Colors.green : Colors.red,
                     size: 50,
-              ),
-              title: Text(
-                success ? sendingSuccess : sendingFailure,
-                style: GoogleFonts.scheherazadeNew(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Text(
-                success ? emailBackupSuccess : emailBackupFailure,
-                style: GoogleFonts.scheherazadeNew(fontSize: 16),
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
-                    acceptText,
+                  ),
+                  title: Text(
+                    success ? sendingSuccess : sendingFailure,
+                    style: GoogleFonts.scheherazadeNew(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: Text(
+                    success ? emailBackupSuccess : emailBackupFailure,
                     style: GoogleFonts.scheherazadeNew(fontSize: 16),
                   ),
+                  actions: [
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(
+                        acceptText,
+                        style: GoogleFonts.scheherazadeNew(fontSize: 16),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
         );
       }
     } catch (e) {
@@ -794,10 +797,13 @@ class _MainMenuState extends State<MainMenuPage> {
                     onChanged: (value) {
                       email = value;
                     },
-                    decoration: InputDecoration(hintText: 'ايميل'),
-                    style: GoogleFonts.scheherazadeNew(
-                      fontSize: 16,
+                    decoration: InputDecoration(
+                      hintText: 'ايميل',
+                      hintStyle: GoogleFonts.scheherazadeNew(fontSize: 12),
+                      alignLabelWithHint: true,
                     ),
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.scheherazadeNew(fontSize: 16),
                   ),
                   actions: [
                     TextButton(
