@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-// Use alias to avoid conflict
 import 'tables.dart';
 import 'database_helper.dart';
 import 'helpers.dart';
 import 'constants.dart';
+import 'utils/logger.dart'; // ✅ Add this import
 
 class AddPatientPage extends StatefulWidget {
   final Function(int) onButtonPressed;
@@ -67,10 +67,11 @@ class _AddPatientPageState extends State<AddPatientPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with current patient data if available
-    print(
-      'Initializing AddPatientPage with current patient: ${widget.curPatient}',
+    // ✅ Replace print with logging
+    AppLogger.info(
+      'Initializing AddPatientPage with current patient: ${widget.curPatient != null ? "Editing existing patient" : "Adding new patient"}',
     );
+
     if (widget.curPatient != null) {
       final patient = widget.curPatient!;
 
@@ -91,40 +92,43 @@ class _AddPatientPageState extends State<AddPatientPage> {
       _serialNumberYearController.text = patient.serialNumberYear ?? empty;
       _childrenController.text = patient.children ?? empty;
 
-      // Set dropdown values based on current patient data
       setState(() {
         _selectedGender = patient.gender ?? emptySelection;
         _selectedPrayer = patient.prayer ?? emptySelection;
         _selectedMaritalStatus = patient.maritalStatus ?? emptySelection;
       });
+
+      AppLogger.info(
+        'Patient data loaded for editing: ${patient.firstName} ${patient.lastName}',
+      );
     } else {
       _initializeSerialNumbers();
     }
   }
 
-  // ✅ Initialize serial numbers properly
+  // ✅ Updated with logging
   Future<void> _initializeSerialNumbers() async {
-    // For new patient, get the next available serial number
     try {
       int nextSerial = await DatabaseHelper.getNextSerialNumber();
       setState(() {
         _serialNumberController.text = nextSerial.toString();
         _serialNumberYearController.text = DateTime.now().year.toString();
       });
-      print('Next serial number will be: $nextSerial');
-    } catch (e) {
-      print('Error getting next serial number: $e');
+      AppLogger.success('Next serial number initialized: $nextSerial');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error getting next serial number', e, stackTrace);
       // Fallback
       setState(() {
         _serialNumberController.text = '2';
         _serialNumberYearController.text = DateTime.now().year.toString();
       });
+      AppLogger.warning('Using fallback serial number: 2');
     }
   }
 
   @override
   void dispose() {
-    // Dispose TextEditingControllers when the widget is removed
+    // Dispose all controllers and focus nodes
     _firstNameController.dispose();
     _middleNameController.dispose();
     _lastNameController.dispose();
@@ -142,7 +146,6 @@ class _AddPatientPageState extends State<AddPatientPage> {
     _serialNumberYearController.dispose();
     _childrenController.dispose();
 
-    // Dispose FocusNodes when the widget is removed
     _firstNameFocusNode.dispose();
     _middleNameFocusNode.dispose();
     _lastNameFocusNode.dispose();
@@ -160,29 +163,22 @@ class _AddPatientPageState extends State<AddPatientPage> {
     _companionFocusNode.dispose();
     _descriptionFocusNode.dispose();
     _childrenFocusNode.dispose();
+
+    AppLogger.debug('AddPatientPage disposed');
     super.dispose();
   }
 
   void _addPatientToDatabase() async {
     try {
+      AppLogger.info('Starting patient save process...');
+
       // Create a new Patient object with the data from the text fields
-      // Get all the values
       String serialNumberYear = _serialNumberYearController.text;
       String serialNumber = _serialNumberController.text;
       String firstName = _firstNameController.text;
       String middleName = _middleNameController.text;
       String lastName = _lastNameController.text;
       String fullName = '$firstName $middleName $lastName';
-
-      // List<String> nameParts = fullName.split(' ');
-      // String first = nameParts.isNotEmpty ? nameParts[0] : empty;
-      // String middle = nameParts.length > 2 ? nameParts[1] : empty;
-      // String last = nameParts.length > 1 ? nameParts[2] : empty;
-
-      // If there are more than 3 parts, join the rest as last name
-      // if (nameParts.length > 3) {
-      //   last = nameParts.sublist(3).join(' ');
-      // }
 
       String id = _idController.text;
       String gender = _selectedGender ?? emptySelection;
@@ -200,7 +196,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
       String treatment = _treatmentController.text;
 
       // Create Patient object
-      Patient? patient = Patient(
+      Patient patient = Patient(
         serialNumberYear: serialNumberYear,
         serialNumber: serialNumber,
         fullName: fullName,
@@ -222,26 +218,34 @@ class _AddPatientPageState extends State<AddPatientPage> {
         diagnosis: diagnosis,
         treatment: treatment,
       );
+
       if (widget.curPatient != null) {
-        // Update existing patient only if there is at least one change
-        if (widget.curPatient == patient) {
+        // Update existing patient
+        if (widget.curPatient != patient) {
+          // Fixed comparison logic
           await DatabaseHelper.updatePatient(patient);
+          AppLogger.success('Patient updated successfully: $fullName');
+        } else {
+          AppLogger.info('No changes detected, skipping update');
         }
       } else {
         await DatabaseHelper.insertPatient(patient);
+        AppLogger.success('New patient inserted successfully: $fullName');
       }
 
       // Show success dialog
       _showSuccessDialog();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.error('Error saving patient to database', e, stackTrace);
       _showErrorDialog(e.toString());
     }
   }
 
   void _showSuccessDialog() {
+    AppLogger.info('Showing success dialog');
     showDialog(
       context: context,
-      barrierDismissible: false, // User must tap button to close
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return Directionality(
           textDirection: TextDirection.rtl,
@@ -270,8 +274,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                      _clearAllFields(); // Clear form
+                      Navigator.of(context).pop();
+                      _clearAllFields();
+                      AppLogger.info('User chose to add new patient');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
@@ -286,8 +291,9 @@ class _AddPatientPageState extends State<AddPatientPage> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                      widget.onButtonPressed(0); // Go back to home
+                      Navigator.of(context).pop();
+                      widget.onButtonPressed(0);
+                      AppLogger.info('User returned to main menu');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
@@ -310,6 +316,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
   }
 
   void _showErrorDialog(String error) {
+    AppLogger.error('Showing error dialog: $error');
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -352,6 +359,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
   }
 
   void _clearAllFields() {
+    AppLogger.debug('Clearing all form fields');
     _firstNameController.clear();
     _middleNameController.clear();
     _lastNameController.clear();
@@ -374,6 +382,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
       _selectedPrayer = emptySelection;
       _selectedMaritalStatus = emptySelection;
     });
+
+    _initializeSerialNumbers(); // Reinitialize serial numbers for new patient
   }
 
   Widget _buildSerialNumberRow() {
@@ -729,13 +739,15 @@ class _AddPatientPageState extends State<AddPatientPage> {
       children: [
         ElevatedButton.icon(
           onPressed: () {
-            print('حفظ');
-            // if all fields are empty, show a message
+            AppLogger.info('Save button pressed');
+
+            // Validate required fields
             if (_firstNameController.text.isEmpty &&
                 _middleNameController.text.isEmpty &&
                 _lastNameController.text.isEmpty &&
                 _serialNumberController.text.isEmpty &&
                 _serialNumberYearController.text.isEmpty) {
+              AppLogger.warning('Save attempted with empty required fields');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -751,10 +763,11 @@ class _AddPatientPageState extends State<AddPatientPage> {
               );
               return;
             }
+
             // Save to database
             _addPatientToDatabase();
-            print(
-              'Patient saved: ${_firstNameController.text} ${_middleNameController.text} ${_lastNameController.text} - ${_cityController.text}',
+            AppLogger.info(
+              'Patient save initiated: ${_firstNameController.text} ${_middleNameController.text} ${_lastNameController.text} - ${_cityController.text}',
             );
           },
           icon: const Icon(Icons.save, color: Colors.green),
@@ -768,7 +781,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
         ),
         ElevatedButton.icon(
           onPressed: () {
-            print('تجاهل');
+            AppLogger.info('Discard button pressed');
+            // You can add discard logic here if needed
           },
           icon: const Icon(Icons.cancel, color: Colors.red),
           label: Text(

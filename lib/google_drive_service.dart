@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'database_helper.dart';
 import 'env_config.dart';
 import 'package:path/path.dart';
+import 'utils/logger.dart'; // ✅ Add this import
 
 class GoogleDriveService {
   static const List<String> _scopes = [
@@ -23,6 +24,7 @@ class GoogleDriveService {
   static Future<void> initialize() async {
     if (_isInitialized) return;
 
+    AppLogger.info('Initializing Google Drive Service...');
     EnvConfig.printConfig();
 
     // Try without client ID first (more reliable for some configurations)
@@ -37,7 +39,11 @@ class GoogleDriveService {
     _isInitialized = true;
 
     if (EnvConfig.debugMode) {
-      print('GoogleDriveService initialized WITHOUT client ID (testing mode)');
+      AppLogger.debug(
+        'GoogleDriveService initialized WITHOUT client ID (testing mode)',
+      );
+    } else {
+      AppLogger.success('GoogleDriveService initialized successfully');
     }
   }
 
@@ -47,7 +53,7 @@ class GoogleDriveService {
       await initialize();
 
       if (EnvConfig.debugMode) {
-        print('Starting Google Sign-In with authHeaders approach...');
+        AppLogger.debug('Starting Google Sign-In with authHeaders approach...');
       }
 
       // Try silent sign-in first
@@ -55,19 +61,21 @@ class GoogleDriveService {
 
       if (account == null) {
         if (EnvConfig.debugMode) {
-          print('Silent sign-in failed, trying interactive sign-in...');
+          AppLogger.debug(
+            'Silent sign-in failed, trying interactive sign-in...',
+          );
         }
         account = await _googleSignIn!.signIn();
       }
 
       if (account == null) {
-        print('Google Sign-In cancelled by user');
+        AppLogger.warning('Google Sign-In cancelled by user');
         return false;
       }
 
       if (EnvConfig.debugMode) {
-        print('Signed in as: ${account.email}');
-        print('Getting auth headers...');
+        AppLogger.info('Signed in as: ${account.email}');
+        AppLogger.debug('Getting auth headers...');
       }
 
       try {
@@ -75,12 +83,14 @@ class GoogleDriveService {
         final Map<String, String> authHeaders = await account.authHeaders;
 
         if (EnvConfig.debugMode) {
-          print('Auth headers received: ${authHeaders.keys.toList()}');
-          print('Auth headers count: ${authHeaders.length}');
+          AppLogger.debug(
+            'Auth headers received: ${authHeaders.keys.toList()}',
+          );
+          AppLogger.debug('Auth headers count: ${authHeaders.length}');
         }
 
         if (authHeaders.isEmpty) {
-          print('No auth headers received');
+          AppLogger.error('No auth headers received');
           return false;
         }
 
@@ -90,33 +100,34 @@ class GoogleDriveService {
 
         // Test the API connection
         if (EnvConfig.debugMode) {
-          print('Testing Drive API connection...');
+          AppLogger.debug('Testing Drive API connection...');
         }
 
         final about = await _driveApi!.about.get($fields: 'user');
 
         if (EnvConfig.debugMode) {
-          print('✅ Drive API connection successful!');
-          print('User: ${about.user?.displayName}');
-          print('Email: ${about.user?.emailAddress}');
+          AppLogger.success('Drive API connection successful!');
+          AppLogger.info('User: ${about.user?.displayName}');
+          AppLogger.info('Email: ${about.user?.emailAddress}');
         }
 
+        AppLogger.success('Google Sign-In completed successfully');
         return true;
-      } catch (e) {
-        print('❌ Auth headers error: $e');
-        print('This might be a scope or API permission issue');
+      } catch (e, stackTrace) {
+        AppLogger.error('Auth headers error', e, stackTrace);
+        AppLogger.warning('This might be a scope or API permission issue');
         return false;
       }
-    } catch (e) {
-      print('❌ Error signing in to Google: $e');
-      print('Error type: ${e.runtimeType}');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error signing in to Google', e, stackTrace);
+      AppLogger.debug('Error type: ${e.runtimeType}');
 
       if (e.toString().contains('DEVELOPER_ERROR')) {
-        print('🔴 DEVELOPER_ERROR: Try without client ID first');
+        AppLogger.error('DEVELOPER_ERROR: Try without client ID first');
       } else if (e.toString().contains('NETWORK_ERROR')) {
-        print('🔴 NETWORK_ERROR: Check internet connection');
+        AppLogger.error('NETWORK_ERROR: Check internet connection');
       } else if (e.toString().contains('SIGN_IN_REQUIRED')) {
-        print('🔴 User needs to sign in again');
+        AppLogger.warning('User needs to sign in again');
       }
 
       return false;
@@ -127,19 +138,25 @@ class GoogleDriveService {
   static Future<bool> uploadDatabase() async {
     try {
       if (_driveApi == null) {
-        print('❌ Drive API not initialized');
+        AppLogger.error('Drive API not initialized');
         return false;
       }
+
+      AppLogger.info('Starting database upload to Google Drive...');
 
       final dbPath = join(await getDatabasesPath(), 'patients.db');
       final dbFile = File(dbPath);
 
       if (!await dbFile.exists()) {
-        print('❌ Database file not found');
+        AppLogger.error('Database file not found at: $dbPath');
         return false;
       }
 
+      final fileSize = await dbFile.length();
+      AppLogger.info('Database file found, size: $fileSize bytes');
+
       // Check if file already exists
+      AppLogger.debug('Checking for existing files...');
       final existingFiles = await _driveApi!.files.list(
         q: "name='patients.db' and trashed=false",
         spaces: 'drive',
@@ -147,22 +164,35 @@ class GoogleDriveService {
 
       // ✅ If file exists, delete it first
       if (existingFiles.files != null && existingFiles.files!.isNotEmpty) {
-        print('Deleting existing file: patients.db');
+        AppLogger.info(
+          'Found ${existingFiles.files!.length} existing file(s), deleting...',
+        );
 
         for (var file in existingFiles.files!) {
           await _driveApi!.files.delete(file.id!);
+          AppLogger.debug('Deleted file: ${file.name} (ID: ${file.id})');
         }
+        AppLogger.success('Existing files deleted successfully');
+      } else {
+        AppLogger.info('No existing files found');
       }
 
       // ✅ Create new file
-      print('Creating new file: patients.db');
+      AppLogger.info('Creating new database backup...');
 
       final media = drive.Media(
         dbFile.openRead(),
         await dbFile.length(),
         contentType: 'application/x-sqlite3',
       );
+
       final List<String> folderIds = await _getOrCreateBackupFolder();
+
+      if (folderIds.isEmpty) {
+        AppLogger.error('Failed to create or find backup folder');
+        return false;
+      }
+
       final fileMetadata =
           drive.File()
             ..name = 'patients.db'
@@ -170,12 +200,17 @@ class GoogleDriveService {
                 'Patient database backup - ${DateTime.now().toIso8601String()}'
             ..parents = folderIds;
 
-      await _driveApi!.files.create(fileMetadata, uploadMedia: media);
+      final uploadedFile = await _driveApi!.files.create(
+        fileMetadata,
+        uploadMedia: media,
+      );
 
-      print('✅ Database uploaded successfully');
+      AppLogger.success('Database uploaded successfully');
+      AppLogger.info('File ID: ${uploadedFile.id}');
+      AppLogger.info('File Name: ${uploadedFile.name}');
       return true;
-    } catch (e) {
-      print('❌ Error uploading database: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error uploading database', e, stackTrace);
       return false;
     }
   }
@@ -187,13 +222,20 @@ class GoogleDriveService {
     required List<String> folderIds,
     required String description,
   }) async {
+    AppLogger.debug('Uploading new file: $fileName');
+
     final drive.File fileMetadata =
         drive.File()
           ..name = fileName
           ..description = description
           ..parents = folderIds;
 
-    return await _driveApi!.files.create(fileMetadata, uploadMedia: media);
+    final result = await _driveApi!.files.create(
+      fileMetadata,
+      uploadMedia: media,
+    );
+    AppLogger.success('File uploaded successfully: $fileName');
+    return result;
   }
 
   // Helper method to upload or update a file
@@ -203,6 +245,8 @@ class GoogleDriveService {
     required List<String> folderIds,
     required String description,
   }) async {
+    AppLogger.debug('Checking if file exists: $fileName');
+
     drive.File? existingFile = await _findFileInFolder(
       folderIds.first,
       fileName,
@@ -211,18 +255,21 @@ class GoogleDriveService {
     if (existingFile != null) {
       // Update existing file
       final String fileId = existingFile.id!;
-      print('Updating existing file: $fileName');
+      AppLogger.info('Updating existing file: $fileName (ID: $fileId)');
 
-      return await _driveApi!.files.update(
+      final result = await _driveApi!.files.update(
         drive.File()
           ..id = fileId
           ..description = description,
         fileId,
         uploadMedia: media,
       );
+
+      AppLogger.success('File updated successfully: $fileName');
+      return result;
     } else {
       // Create new file
-      print('Creating new file: $fileName');
+      AppLogger.info('Creating new file: $fileName');
 
       final drive.File fileMetadata =
           drive.File()
@@ -230,7 +277,12 @@ class GoogleDriveService {
             ..description = description
             ..parents = folderIds;
 
-      return await _driveApi!.files.create(fileMetadata, uploadMedia: media);
+      final result = await _driveApi!.files.create(
+        fileMetadata,
+        uploadMedia: media,
+      );
+      AppLogger.success('New file created successfully: $fileName');
+      return result;
     }
   }
 
@@ -238,12 +290,26 @@ class GoogleDriveService {
   static Future<bool> downloadDatabase() async {
     try {
       if (_driveApi == null) {
+        AppLogger.warning(
+          'Drive API not initialized, attempting to sign in...',
+        );
         bool signedIn = await signInToGoogle();
-        if (!signedIn) return false;
+        if (!signedIn) {
+          AppLogger.error('Failed to sign in to Google Drive');
+          return false;
+        }
       }
+
+      AppLogger.info('Starting database download from Google Drive...');
 
       final List<String> folderIds = await _getOrCreateBackupFolder();
 
+      if (folderIds.isEmpty) {
+        AppLogger.error('Failed to find backup folder');
+        return false;
+      }
+
+      AppLogger.debug('Searching for database files in backup folder...');
       final drive.FileList fileList = await _driveApi!.files.list(
         q: "'${folderIds.first}' in parents and name contains '.db' and trashed=false",
         orderBy: 'createdTime desc',
@@ -251,12 +317,15 @@ class GoogleDriveService {
       );
 
       if (fileList.files?.isEmpty ?? true) {
-        print('No backup files found');
+        AppLogger.warning('No backup files found in Google Drive');
         return false;
       }
 
       final drive.File latestFile = fileList.files!.first;
-      print('Downloading: ${latestFile.name}');
+      AppLogger.info('Found ${fileList.files!.length} backup file(s)');
+      AppLogger.info(
+        'Downloading latest: ${latestFile.name} (${latestFile.createdTime})',
+      );
 
       final drive.Media downloadedMedia =
           await _driveApi!.files.get(
@@ -268,13 +337,17 @@ class GoogleDriveService {
       final Directory tempDir = await getTemporaryDirectory();
       final File tempFile = File('${tempDir.path}/restored_database.db');
 
+      AppLogger.debug('Saving downloaded data to temporary file...');
       final List<int> bytes = [];
       await for (final chunk in downloadedMedia.stream) {
         bytes.addAll(chunk);
       }
 
       await tempFile.writeAsBytes(bytes);
+      AppLogger.info('Downloaded ${bytes.length} bytes to temporary file');
 
+      // Close current database and replace it
+      AppLogger.debug('Replacing current database...');
       final Database currentDb = await DatabaseHelper.database;
       await currentDb.close();
 
@@ -282,11 +355,16 @@ class GoogleDriveService {
       await tempFile.copy(currentDbFile.path);
       await tempFile.delete();
 
+      // Reinitialize database
       await DatabaseHelper.database;
-      print('Database restored successfully');
+      AppLogger.success('Database restored successfully from Google Drive');
       return true;
-    } catch (e) {
-      print('Error downloading database: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Error downloading database from Google Drive',
+        e,
+        stackTrace,
+      );
       return false;
     }
   }
@@ -294,7 +372,7 @@ class GoogleDriveService {
   // Get or create backup folder
   static Future<List<String>> _getOrCreateBackupFolder() async {
     try {
-      print('Looking for existing backup folder...');
+      AppLogger.debug('Looking for existing backup folder...');
 
       // Search for existing backup folder
       final drive.FileList existingFolders = await _driveApi!.files.list(
@@ -303,49 +381,85 @@ class GoogleDriveService {
 
       if (existingFolders.files?.isNotEmpty ?? false) {
         final folderId = existingFolders.files!.first.id!;
-        print('Found existing backup folder: $folderId');
+        final folderName = existingFolders.files!.first.name!;
+        AppLogger.success(
+          'Found existing backup folder: $folderName (ID: $folderId)',
+        );
         return [folderId];
       }
 
-      print('Creating new backup folder...');
+      AppLogger.info('No existing backup folder found, creating new one...');
 
       // Create new backup folder
       final drive.File folderMetadata =
           drive.File()
             ..name = 'المعالجة بالرقية الشرعية'
             ..mimeType = 'application/vnd.google-apps.folder'
-            ..description = 'Backup folder for Patients Database';
+            ..description =
+                'Backup folder for Patients Database - Created ${DateTime.now().toIso8601String()}';
 
       final drive.File createdFolder = await _driveApi!.files.create(
         folderMetadata,
       );
-      print('Created backup folder: ${createdFolder.id}');
 
+      AppLogger.success(
+        'Created backup folder: ${createdFolder.name} (ID: ${createdFolder.id})',
+      );
       return [createdFolder.id!];
-    } catch (e) {
-      print('Error managing backup folder: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error managing backup folder', e, stackTrace);
       return [];
     }
   }
 
   // Check if signed in
   static Future<bool> isSignedIn() async {
-    await initialize();
-    return await _googleSignIn?.isSignedIn() ?? false;
+    try {
+      await initialize();
+      final isSignedIn = await _googleSignIn?.isSignedIn() ?? false;
+
+      if (EnvConfig.debugMode) {
+        AppLogger.debug(
+          'Google Sign-In status: ${isSignedIn ? "Signed In" : "Not Signed In"}',
+        );
+      }
+
+      return isSignedIn;
+    } catch (e, stackTrace) {
+      AppLogger.error('Error checking sign-in status', e, stackTrace);
+      return false;
+    }
   }
 
   // Get current user
   static Future<String?> getCurrentUserEmail() async {
-    await initialize();
-    final GoogleSignInAccount? account = await _googleSignIn?.signInSilently();
-    return account?.email;
+    try {
+      await initialize();
+      final GoogleSignInAccount? account =
+          await _googleSignIn?.signInSilently();
+
+      if (account != null) {
+        AppLogger.info('Current Google user: ${account.email}');
+        return account.email;
+      } else {
+        AppLogger.debug('No current Google user found');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Error getting current user email', e, stackTrace);
+      return null;
+    }
   }
 
   // Sign out
   static Future<void> signOut() async {
-    await _googleSignIn?.signOut();
-    _driveApi = null;
-    print('Signed out from Google');
+    try {
+      await _googleSignIn?.signOut();
+      _driveApi = null;
+      AppLogger.success('Signed out from Google Drive successfully');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error signing out from Google', e, stackTrace);
+    }
   }
 
   // Check if a file exists in Google Drive
@@ -354,18 +468,101 @@ class GoogleDriveService {
     String fileName,
   ) async {
     try {
+      AppLogger.debug('Searching for file: $fileName in folder: $folderIds');
+
       final drive.FileList files = await _driveApi!.files.list(
         q: "'$folderIds' in parents and name='$fileName' and trashed=false",
         pageSize: 1,
       );
 
       if (files.files?.isNotEmpty ?? false) {
-        return files.files!.first;
+        final foundFile = files.files!.first;
+        AppLogger.debug('File found: ${foundFile.name} (ID: ${foundFile.id})');
+        return foundFile;
       }
+
+      AppLogger.debug('File not found: $fileName');
       return null;
-    } catch (e) {
-      print('Error searching for file: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error searching for file: $fileName', e, stackTrace);
       return null;
+    }
+  }
+
+  // ✅ Add method to test Google Drive connection
+  static Future<bool> testConnection() async {
+    try {
+      AppLogger.info('Testing Google Drive connection...');
+
+      if (_driveApi == null) {
+        AppLogger.warning(
+          'Drive API not initialized, attempting to sign in...',
+        );
+        final signedIn = await signInToGoogle();
+        if (!signedIn) {
+          AppLogger.error('Failed to sign in for connection test');
+          return false;
+        }
+      }
+
+      // Test by getting user info
+      final about = await _driveApi!.about.get($fields: 'user,storageQuota');
+
+      AppLogger.success('Google Drive connection test successful');
+      AppLogger.info('User: ${about.user?.displayName ?? "Unknown"}');
+      AppLogger.info('Email: ${about.user?.emailAddress ?? "Unknown"}');
+
+      if (about.storageQuota != null) {
+        final usedGB = (int.tryParse(about.storageQuota!.usage?.toString() ?? '0') ?? 0) / (1024 * 1024 * 1024);
+        final limitGB = (int.tryParse(about.storageQuota!.limit?.toString() ?? '0') ?? 0) / (1024 * 1024 * 1024);
+        AppLogger.info(
+          'Storage: ${usedGB.toStringAsFixed(2)} GB / ${limitGB.toStringAsFixed(2)} GB used',
+        );
+      }
+
+      return true;
+    } catch (e, stackTrace) {
+      AppLogger.error('Google Drive connection test failed', e, stackTrace);
+      return false;
+    }
+  }
+
+  // ✅ Add method to list backup files
+  static Future<List<drive.File>> listBackupFiles() async {
+    try {
+      if (_driveApi == null) {
+        AppLogger.error('Drive API not initialized');
+        return [];
+      }
+
+      AppLogger.info('Listing backup files...');
+
+      final List<String> folderIds = await _getOrCreateBackupFolder();
+      if (folderIds.isEmpty) {
+        AppLogger.error('No backup folder found');
+        return [];
+      }
+
+      final drive.FileList fileList = await _driveApi!.files.list(
+        q: "'${folderIds.first}' in parents and trashed=false",
+        orderBy: 'createdTime desc',
+        pageSize: 50,
+        $fields: 'files(id,name,size,createdTime,modifiedTime)',
+      );
+
+      final files = fileList.files ?? [];
+      AppLogger.info('Found ${files.length} backup files');
+
+      for (var file in files) {
+        AppLogger.debug(
+          'File: ${file.name}, Size: ${file.size}, Created: ${file.createdTime}',
+        );
+      }
+
+      return files;
+    } catch (e, stackTrace) {
+      AppLogger.error('Error listing backup files', e, stackTrace);
+      return [];
     }
   }
 }

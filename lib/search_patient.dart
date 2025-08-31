@@ -51,7 +51,7 @@ class _SearchPatientPageState extends State<SearchPatientPage> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          // padding: const EdgeInsets.all(20),
           child: Form(
             child: Padding(
               padding: const EdgeInsets.only(left: 30, right: 30),

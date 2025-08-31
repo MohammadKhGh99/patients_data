@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'tables.dart';
 import 'constants.dart';
+import 'utils/logger.dart';
 
 class DatabaseHelper {
   static Database? _database;
@@ -48,17 +50,12 @@ class DatabaseHelper {
       )
     ''');
 
+    // Set AUTOINCREMENT to start from 2
     await db.execute('''
       INSERT INTO sqlite_sequence (name, seq) VALUES ('patients', 1)
     ''');
-
-    // await db.execute('''
-    //   INSERT INTO patients (الرقم_التسلسلي, الإسم_الشخصي) VALUES (1, 'dummy')
-    // ''');
-
-    // await db.execute('''
-    //   DELETE FROM patients WHERE الرقم_التسلسلي = 1
-    // ''');
+    
+    AppLogger.success('Database created with AUTOINCREMENT starting from 2');
   }
 
   // Insert patient function
@@ -70,17 +67,15 @@ class DatabaseHelper {
       await db.insert(
         'patients',
         patient.toMapForInsertion(),
-        conflictAlgorithm: ConflictAlgorithm.replace, // Changed from ignore
+        conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      print('Patient inserted successfully');
+      AppLogger.success('Patient inserted successfully, patient name: ${patient.fullName}');
 
-      // Get count after insertion (await instead of then)
       final patients = await getAllPatients();
-      print('Total patients: $patients');
-      lastPatientSerialNumber++;
-    } catch (e) {
-      print('Error inserting patient: $e');
+      AppLogger.info('Total patients: ${patients.length}');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error inserting patient', e, stackTrace);
       rethrow;
     }
   }
@@ -252,7 +247,8 @@ class DatabaseHelper {
         return 2; // If no sequence found, start from 2
       }
     } catch (e) {
-      print('Error getting next serial number: $e');
+      // logging
+      AppLogger.error('Error getting next serial number: $e');
       return 2;
     }
   }
@@ -271,7 +267,7 @@ class DatabaseHelper {
         return 1; // No patients yet
       }
     } catch (e) {
-      print('Error getting last serial number: $e');
+      AppLogger.error('Error getting last serial number: $e');
       return 1;
     }
   }
@@ -289,10 +285,9 @@ class DatabaseHelper {
       List<String> columnNames =
           result.map((row) => row['name'] as String).toList();
 
-      print('Column names: $columnNames');
       return columnNames;
     } catch (e) {
-      print('Error getting column names: $e');
+      AppLogger.error('Error getting column names: $e');
       return [];
     }
   }
@@ -316,7 +311,7 @@ class DatabaseHelper {
 
       return csvBuffer.toString();
     } catch (e) {
-      print('Error generating CSV: $e');
+      AppLogger.error('Error generating CSV: $e');
       return '';
     }
   }
@@ -329,17 +324,17 @@ class DatabaseHelper {
       final appPath = '${appDirectory.path}/patients.csv';
       final appFile = File(appPath);
       await appFile.writeAsString(csvContent);
-      print('✅ CSV saved to app directory: $appPath');
+      AppLogger.error('✅ CSV saved to app directory: $appPath');
 
       // 2. ✅ Save to main storage Documents folder
       final mainStorageSuccess = await _copyCSVToMainStorage(csvContent);
       if (mainStorageSuccess) {
-        print('✅ CSV copied to main storage Documents folder');
+        AppLogger.error('✅ CSV copied to main storage Documents folder');
       } else {
-        print('❌ Failed to copy CSV to main storage');
+        AppLogger.error('❌ Failed to copy CSV to main storage');
       }
     } catch (e) {
-      print('❌ Error saving CSV: $e');
+      AppLogger.error('❌ Error saving CSV: $e');
     }
   }
 
@@ -350,14 +345,14 @@ class DatabaseHelper {
       // Note: Add permission_handler dependency if not already added
       // final permission = await Permission.storage.request();
       // if (!permission.isGranted) {
-      //   print('❌ Storage permission denied');
+      //   AppLogger.error('❌ Storage permission denied');
       //   return false;
       // }
 
       // Get external storage directory
       Directory? externalDir = await getExternalStorageDirectory();
       if (externalDir == null) {
-        print('❌ External storage not available');
+        AppLogger.error('❌ External storage not available');
         return false;
       }
       print(externalDir.path);
@@ -383,10 +378,10 @@ class DatabaseHelper {
       final csvFile = File('$documentsPath/$fileName');
       await csvFile.writeAsString(csvContent);
 
-      print('✅ CSV saved to main storage: ${csvFile.path}');
+      AppLogger.error('✅ CSV saved to main storage: ${csvFile.path}');
       return true;
     } catch (e) {
-      print('❌ Error copying CSV to main storage: $e');
+      AppLogger.error('❌ Error copying CSV to main storage: $e');
       return false;
     }
   }

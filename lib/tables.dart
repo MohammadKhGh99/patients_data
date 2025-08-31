@@ -208,7 +208,7 @@ class Patient {
     //       String cleanCell = cell.replaceAll(',', ';').replaceAll('"', '""');
     //       return '"$cleanCell"'; // Wrap in quotes for CSV safety
     //     }).toList();
-    print(rowData); // Debug: Check the escaped data format
+    // print(rowData); // Debug: Check the escaped data format
     return rowData.join(','); // ✅ Return as comma-separated string
   }
 }

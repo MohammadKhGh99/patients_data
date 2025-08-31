@@ -117,7 +117,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: () {
-                      print('تم');
                       widget.onButtonPressed(
                         1,
                         selectedPatient: searchResults[selectedResult],

@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'database_helper.dart';
 import 'env_config.dart';
+import 'utils/logger.dart';
 
 class EmailService {
   // Send database backup via email
@@ -13,11 +14,11 @@ class EmailService {
       EnvConfig.printConfig();
 
       if (!EnvConfig.hasEmailConfig) {
-        print('Email configuration missing in .env file');
+        AppLogger.error('Email configuration missing in .env file');
         return false;
       }
 
-      print('Starting email backup process...');
+      AppLogger.info('Starting email backup process...');
 
       // Get the database file
       final Database db = await DatabaseHelper.database;
@@ -25,29 +26,32 @@ class EmailService {
       final File dbFile = File(dbPath);
 
       if (!await dbFile.exists()) {
-        print('Database file not found');
+        AppLogger.error('Database file not found at: $dbPath');
         return false;
       }
 
-      print('Database file found, size: ${await dbFile.length()} bytes');
+      final fileSize = await dbFile.length();
+      AppLogger.info('Database file found, size: $fileSize bytes');
 
       // Create a copy in temp directory with timestamp
       final Directory tempDir = await getTemporaryDirectory();
-      final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      final String backupFileName = 'patients_backup_$timestamp.db';
+      final String backupFileName = 'patients.db';
       final File backupFile = File('${tempDir.path}/$backupFileName');
 
       await dbFile.copy(backupFile.path);
-      print('Backup file created: ${backupFile.path}');
+      AppLogger.info('Backup file created: ${backupFile.path}');
 
       // Configure SMTP server (Gmail)
       final smtpServer = gmail(EnvConfig.senderEmail, EnvConfig.senderPassword);
+
+      final recipient = customRecipient ?? EnvConfig.recipientEmail;
+      final fileLength = await backupFile.length();
 
       // Create message
       final message =
           Message()
             ..from = Address(EnvConfig.senderEmail, 'نظام قاعدة بيانات المرضى')
-            ..recipients.add(customRecipient ?? EnvConfig.recipientEmail)
+            ..recipients.add(recipient)
             ..subject =
                 'نسخة احتياطية - قاعدة بيانات المرضى - ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}'
             ..text = '''
@@ -57,7 +61,7 @@ class EmailService {
 
 تفاصيل النسخة الاحتياطية:
 - تاريخ ووقت النسخة: ${DateTime.now().toLocal()}
-- حجم الملف: ${await backupFile.length()} بايت
+- حجم الملف: $fileLength بايت
 - اسم الملف: $backupFileName
 
 يرجى حفظ هذا الملف في مكان آمن.
@@ -74,7 +78,7 @@ class EmailService {
   <h3 style="color: #388E3C;">تفاصيل النسخة الاحتياطية:</h3>
   <ul style="background-color: #E8F5E8; padding: 15px; border-radius: 5px;">
     <li><strong>تاريخ ووقت النسخة:</strong> ${DateTime.now().toLocal()}</li>
-    <li><strong>حجم الملف:</strong> ${await backupFile.length()} بايت</li>
+    <li><strong>حجم الملف:</strong> $fileLength بايت</li>
     <li><strong>اسم الملف:</strong> $backupFileName</li>
   </ul>
   
@@ -87,20 +91,23 @@ class EmailService {
             ..attachments = [FileAttachment(backupFile)];
 
       // Send email
-      print('Sending email to: ${customRecipient ?? EnvConfig.recipientEmail}');
+      AppLogger.info('Sending email to: $recipient');
       final sendReport = await send(message, smtpServer);
-      print('Email sent successfully: ${sendReport.toString()}');
+      AppLogger.success('Email sent successfully: ${sendReport.toString()}');
 
       // Clean up temp file
       await backupFile.delete();
-      print('Temporary file cleaned up');
+      AppLogger.debug('Temporary file cleaned up');
 
       return true;
-    } catch (e) {
-      print('Error sending email: $e');
-      print('Error type: ${e.runtimeType}');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error sending email', e, stackTrace);
+      AppLogger.debug('Error type: ${e.runtimeType}');
+
       if (e.toString().contains('Authentication')) {
-        print('Authentication failed - check email and password in .env file');
+        AppLogger.error(
+          'Authentication failed - check email and password in .env file',
+        );
       }
       return false;
     }
@@ -114,7 +121,7 @@ class EmailService {
   }) async {
     try {
       if (!EnvConfig.hasEmailConfig) {
-        print('Email configuration missing');
+        AppLogger.error('Email configuration missing');
         return false;
       }
 
@@ -123,7 +130,7 @@ class EmailService {
       final File dbFile = File(dbPath);
 
       if (!await dbFile.exists()) {
-        print('Database file not found');
+        AppLogger.error('Database file not found at: $dbPath');
         return false;
       }
 
@@ -135,27 +142,34 @@ class EmailService {
       );
       await dbFile.copy(backupFile.path);
 
+      AppLogger.info('Created temporary backup: ${backupFile.path}');
+
       // Configure SMTP
       final smtpServer = gmail(EnvConfig.senderEmail, EnvConfig.senderPassword);
+
+      final recipient = recipientEmail ?? EnvConfig.recipientEmail;
 
       // Create message
       final emailMessage =
           Message()
             ..from = Address(EnvConfig.senderEmail, 'نظام قاعدة بيانات المرضى')
-            ..recipients.add(recipientEmail ?? EnvConfig.recipientEmail)
+            ..recipients.add(recipient)
             ..subject = subject
             ..text = customMessage
             ..attachments = [FileAttachment(backupFile)];
 
       // Send email
+      AppLogger.info('Sending custom email to: $recipient');
       await send(emailMessage, smtpServer);
+      AppLogger.success('Custom email sent successfully');
 
       // Clean up
       await backupFile.delete();
+      AppLogger.debug('Temporary backup file cleaned up');
 
       return true;
-    } catch (e) {
-      print('Error sending custom email: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error sending custom email', e, stackTrace);
       return false;
     }
   }
@@ -164,7 +178,7 @@ class EmailService {
   static Future<bool> testEmailConfig() async {
     try {
       if (!EnvConfig.hasEmailConfig) {
-        print('Email configuration missing');
+        AppLogger.error('Email configuration missing');
         return false;
       }
 
@@ -178,11 +192,12 @@ class EmailService {
             ..text =
                 'هذه رسالة اختبار للتأكد من إعدادات الإيميل. إذا وصلتك هذه الرسالة فإن الإعدادات صحيحة.';
 
+      AppLogger.info('Sending test email to: ${EnvConfig.recipientEmail}');
       await send(message, smtpServer);
-      print('Test email sent successfully');
+      AppLogger.success('Test email sent successfully');
       return true;
-    } catch (e) {
-      print('Test email failed: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Test email failed', e, stackTrace);
       return false;
     }
   }

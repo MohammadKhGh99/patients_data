@@ -1,21 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:patients_data/add_patient.dart';
 import 'package:patients_data/database_helper.dart';
+import 'package:patients_data/env_config.dart';
 import 'package:patients_data/search_patient.dart';
 import 'package:patients_data/search_results.dart';
 import 'package:patients_data/tables.dart';
 import 'google_drive_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'email_service.dart';
-import 'env_config.dart';
+import 'utils/logger.dart'; // ✅ Add this import
 import 'constants.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'email_service.dart';
 
+// ✅ Update main function
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Load environment variables from .env file
-  await dotenv.load(fileName: ".env");
+
+  // ✅ Initialize logging
+  AppLogger.setupLogging();
+
+  try {
+    await dotenv.load(fileName: ".env");
+    AppLogger.success('.env file loaded successfully');
+  } catch (e, stackTrace) {
+    AppLogger.error('Error loading .env file', e, stackTrace);
+  }
+
+  // Initialize Google Drive Service
+  await GoogleDriveService.initialize();
+
   runApp(const MyApp());
   GoogleDriveService.initialize();
 }
