@@ -812,51 +812,51 @@ class _MainMenuState extends State<MainMenuPage> {
           ),
         ),
         // Add this button temporarily for debugging
-        ElevatedButton.icon(
-          onPressed: () async {
-            // Check environment configuration
-            // print('=== DEBUG INFO ===');
-            // print('Client ID from env: ${EnvConfig.googleOAuthClientId}');
-            // print('Has Google Credentials: ${EnvConfig.hasGoogleCredentials}');
-            // print('Client ID length: ${EnvConfig.googleOAuthClientId.length}');
-            // print('Client ID starts with: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...');
+        // ElevatedButton.icon(
+        //   onPressed: () async {
+        //     // Check environment configuration
+        //     // print('=== DEBUG INFO ===');
+        //     // print('Client ID from env: ${EnvConfig.googleOAuthClientId}');
+        //     // print('Has Google Credentials: ${EnvConfig.hasGoogleCredentials}');
+        //     // print('Client ID length: ${EnvConfig.googleOAuthClientId.length}');
+        //     // print('Client ID starts with: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...');
 
-            // Check package name
-            // print('Expected package: com.example.patients_data');
+        //     // Check package name
+        //     // print('Expected package: com.example.patients_data');
 
-            // Show dialog with info
-            showDialog(
-              context: context,
-              builder:
-                  (context) => AlertDialog(
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Has Client ID: ${EnvConfig.hasGoogleCredentials}',
-                        ),
-                        Text(
-                          'Client ID Length: ${EnvConfig.googleOAuthClientId.length}',
-                        ),
-                        if (EnvConfig.hasGoogleCredentials)
-                          Text(
-                            'Client ID: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...',
-                          ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('OK'),
-                      ),
-                    ],
-                  ),
-            );
-          },
-          icon: Icon(Icons.bug_report),
-          label: Text('Debug Config'),
-        ),
+        //     // Show dialog with info
+        //     showDialog(
+        //       context: context,
+        //       builder:
+        //           (context) => AlertDialog(
+        //             content: Column(
+        //               mainAxisSize: MainAxisSize.min,
+        //               crossAxisAlignment: CrossAxisAlignment.start,
+        //               children: [
+        //                 Text(
+        //                   'Has Client ID: ${EnvConfig.hasGoogleCredentials}',
+        //                 ),
+        //                 Text(
+        //                   'Client ID Length: ${EnvConfig.googleOAuthClientId.length}',
+        //                 ),
+        //                 if (EnvConfig.hasGoogleCredentials)
+        //                   Text(
+        //                     'Client ID: ${EnvConfig.googleOAuthClientId.substring(0, 20)}...',
+        //                   ),
+        //               ],
+        //             ),
+        //             actions: [
+        //               TextButton(
+        //                 onPressed: () => Navigator.pop(context),
+        //                 child: Text('OK'),
+        //               ),
+        //             ],
+        //           ),
+        //     );
+        //   },
+        //   icon: Icon(Icons.bug_report),
+        //   label: Text('Debug Config'),
+        // ),
       ],
     );
   }
