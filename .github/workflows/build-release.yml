@@ -26,7 +26,7 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.32.0'  # ✅ Updated to match Dart 3.8+ requirement
+        flutter-version: '3.32.0'
         channel: 'stable'
         cache: true
 
@@ -34,8 +34,6 @@ jobs:
       run: |
         flutter --version
         dart --version
-        echo "Dart SDK path: $(which dart)"
-        echo "Flutter SDK path: $(which flutter)"
 
     - name: Flutter Doctor
       run: flutter doctor -v
@@ -56,13 +54,22 @@ jobs:
       run: flutter test --coverage
       continue-on-error: true
 
-    - name: Create Keystore
+    - name: Create Keystore and Properties
       run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+        # Create keystore file in the correct location
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.jks
+        
+        # Create key.properties in android directory
         echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
         echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
         echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
         echo "storeFile=upload-keystore.jks" >> android/key.properties
+        
+        # Debug: Show file locations
+        echo "=== Keystore file location ==="
+        ls -la android/upload-keystore.jks || echo "Keystore file not found"
+        echo "=== Key properties content ==="
+        cat android/key.properties
 
     - name: Build Release APK
       run: flutter build apk --release --verbose
@@ -138,7 +145,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📁 Generated Files:" >> $GITHUB_STEP_SUMMARY
         echo "- APK: \`patients-data-v${{ steps.date.outputs.date }}.apk\`" >> $GITHUB_STEP_SUMMARY
-        echo "- AAB: \`app-release.aab\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **AAB**: \`app-release.aab\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📥 Download:" >> $GITHUB_STEP_SUMMARY
         echo "Check the **Artifacts** section below to download the built files." >> $GITHUB_STEP_SUMMARY
